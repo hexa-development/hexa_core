@@ -1,0 +1,74 @@
+-- ============================================================
+-- ระบบ login + spawn อัตโนมัติ (ไม่มีหน้าจอเลือกตัวละคร/จุดเกิด)
+-- ============================================================
+-- client โหลดเสร็จจะยิง HexaCore:Server:RequestSpawn เข้ามา แล้วฝั่งนี้จะ:
+--   1. หาตัวละครล่าสุดของ license นี้ในฐานข้อมูล
+--   2. ถ้ามี -> login ตัวนั้น / ถ้าไม่มี -> สร้างตัวละครใหม่ให้อัตโนมัติ
+--   3. ส่งตำแหน่ง + เลือดกลับไปให้ client วาร์ปลงพื้นทันที
+
+local spawning = {} -- กันการยิง RequestSpawn ซ้ำระหว่างที่กำลัง login อยู่
+
+-- ส่งข้อมูล spawn ของผู้เล่นที่ login แล้วกลับไปให้ client
+local function sendSpawn(src, Player)
+    local pos = Player.PlayerData.position or HexaCore.Config.DefaultSpawn
+    local health = (Player.PlayerData.metadata and Player.PlayerData.metadata.health) or 600
+    -- ส่งเพศไปด้วย เพื่อให้ client เลือกโมเดล mp_male/mp_female ให้ตรงกับที่เลือกไว้
+    local gender = (Player.PlayerData.charinfo and Player.PlayerData.charinfo.gender) or 0
+    TriggerClientEvent('HexaCore:Client:SpawnPlayer', src, pos, health, gender)
+end
+
+RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
+    local src = source
+
+    -- login ไปแล้ว (client ขอซ้ำเพราะรอบแรกตอบไม่ถึง) -> ส่งข้อมูลเดิมกลับไปใหม่
+    -- ห้าม return เงียบๆ ไม่งั้น client จะค้างรอตลอด
+    if HexaCore.Players[src] then
+        return sendSpawn(src, HexaCore.Players[src])
+    end
+    if spawning[src] then return end -- กำลัง login อยู่ รอรอบนี้จบก่อน
+    spawning[src] = true
+
+    -- รอ installer สร้างตาราง players ให้เสร็จก่อน (กันแข่งกันตอน DB ใหม่)
+    if AwaitSchemaReady then AwaitSchemaReady(15000) end
+
+    local license = HexaCore.Functions.GetIdentifier(src)
+    if not license then
+        spawning[src] = nil
+        return DropPlayer(src, Lang:t('error.no_valid_license'))
+    end
+
+    -- ครอบด้วย pcall เพื่อให้ spawning ถูกเคลียร์เสมอแม้ login พัง
+    -- ไม่งั้น error หนึ่งครั้ง = ผู้เล่นขอ spawn ใหม่ไม่ได้อีกเลย
+    local ok, err = pcall(function()
+        -- หาตัวละครของ license นี้ (ตาราง users สไตล์ ESX: identifier = license)
+        local citizenid = MySQL.scalar.await('SELECT citizenid FROM users WHERE identifier = ? ORDER BY last_seen DESC LIMIT 1', { license })
+        -- citizenid = nil ได้ -> Login จะสร้างตัวละครใหม่จาก PlayerDefaults ให้เอง
+        HexaCore.Player.Login(src, citizenid)
+    end)
+    spawning[src] = nil
+
+    if not ok then
+        print(('[hexa_core] RequestSpawn failed for id %s: %s'):format(src, err))
+        return -- client จะ retry เองใน 10 วิ
+    end
+
+    local Player = HexaCore.Players[src]
+    if not Player then return end
+
+    -- ส่ง Shared ล่าสุดให้ client ก่อน spawn (อาชีพจาก DB อาจโหลดหลัง client ต่อเข้ามา)
+    TriggerClientEvent('HexaCore:Client:SharedUpdate', src, HexaCore.Shared)
+    sendSpawn(src, Player)
+end)
+
+AddEventHandler('playerDropped', function()
+    spawning[source] = nil
+end)
+
+-- เซฟผู้เล่นทุกคนก่อน resource หยุด/รีสตาร์ท
+-- เพื่อให้ตำแหน่งและข้อมูลล่าสุดลง DB แล้วตอน client กลับมา login ใหม่จะได้ข้อมูลตรง
+AddEventHandler('onResourceStop', function(res)
+    if res ~= GetCurrentResourceName() then return end
+    for src in pairs(HexaCore.Players) do
+        HexaCore.Player.Save(src)
+    end
+end)
