@@ -4,7 +4,8 @@ game 'rdr3'
 
 lua54 'yes'
 
-description 'Hexa Developments'
+author 'Hexa Framework'
+description 'Hexa Framework - core resource'
 version '2.3.10'
 
 shared_scripts {
