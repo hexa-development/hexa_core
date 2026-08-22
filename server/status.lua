@@ -1,25 +1,8 @@
-﻿-- ============================================================
--- hexa_core — ระบบสถานะร่างกาย (ฝั่ง server)
--- ============================================================
--- หิว (hunger) / กระหาย (thirst) / สะอาด (cleanliness) / เครียด (stress)
--- ทุกค่าเป็น 0-100 เก็บอยู่ใน PlayerData.metadata และเซฟลงฐานข้อมูลตามรอบปกติ
---
--- ทำไมรอบลดค่าถึงอยู่ฝั่งนี้:
--- ต้นฉบับให้ client นับเวลาแล้วยิง SetMetaData กลับมาเอง ซึ่งแปลว่าใครไม่ยิงก็ไม่หิว
--- (แค่หยุด thread เดียวใน client ก็อมตะ) ที่นี่จึงนับเวลาเองทั้งหมด client ได้แค่
--- รับค่าที่คำนวณเสร็จแล้วไปวาด — ดู hexa_status
---
--- export ที่สคริปต์อื่นเรียกได้ (อาหาร/น้ำ/สบู่/ยา ใช้ชุดนี้):
---   exports['hexa_core']:AddStatus(src, 'hunger', 20)
---   exports['hexa_core']:RemoveStatus(src, 'thirst', 10)
---   exports['hexa_core']:SetStatus(src, 'cleanliness', 100)
---   exports['hexa_core']:GetStatus(src)            -> ตารางครบทุกค่า
---   exports['hexa_core']:GetStatus(src, 'hunger')  -> ตัวเลขเดียว
+﻿-- สถานะร่างกาย 0-100 ใน metadata นับเวลาฝั่ง server เพราะฝั่ง client แค่หยุด thread เดียวก็อมตะ ดู docs api/exports
 
 local StatusKeys = { 'hunger', 'thirst', 'cleanliness', 'stress' }
 
---- คีย์ที่ระบบนี้ดูแล — กันไม่ให้ export ถูกใช้ไปเขียน metadata ช่องอื่น
---- (injail / rep / criminalrecord ต้องผ่าน SetMetaData ตรงๆ เท่านั้น)
+--- ไวต์ลิสต์คีย์ กัน export ถูกใช้ไปเขียน metadata ช่องอื่นอย่าง injail / rep / criminalrecord
 local IsStatusKey = {}
 for _, key in ipairs(StatusKeys) do IsStatusKey[key] = true end
 
@@ -33,8 +16,7 @@ end
 
 --- อ่านค่าสถานะทั้งหมดของผู้เล่นคนหนึ่ง (nil = ไม่มีตัวละครโหลดอยู่)
 local function readStatus(src)
-    -- ตั้งชื่อ ply ไม่ใช่ Player เพราะ Player(...) เป็นฟังก์ชัน global ของ FiveM
-    -- ที่ไฟล์นี้ต้องใช้อ่าน statebag — ตั้งชื่อชนกันเมื่อไหร่ statebag พังเงียบทันที
+    -- ต้องชื่อ ply ไม่ใช่ Player เพราะไฟล์นี้ใช้ global Player(...) อ่าน statebag ชนชื่อเมื่อไหร่ statebag พังเงียบ
     local ply = HexaCore.GetPlayer(src)
     if not ply then return nil end
 
@@ -46,8 +28,7 @@ local function readStatus(src)
     return out
 end
 
---- เขียนค่าหลายช่องพร้อมกันแล้วบอก client รอบเดียว
---- values = { hunger = 80, thirst = 55, ... } (ช่องที่ไม่รู้จักถูกทิ้ง)
+--- เขียนหลายช่องพร้อมกันแล้วบอก client รอบเดียว ช่องที่ไม่รู้จักถูกทิ้ง
 local function writeStatus(src, values)
     local ply = HexaCore.GetPlayer(src)
     if not ply then return nil end
@@ -63,8 +44,7 @@ local function writeStatus(src, values)
     -- SetMetaData แบบตารางเรียก UpdatePlayerData ให้ครั้งเดียว (ไม่ใช่ครั้งต่อคีย์)
     ply.SetMetaData(applied)
 
-    -- statebag ของผู้เล่น: สคริปต์อื่นอ่าน Player(src).state.hunger ได้โดยไม่ต้องขอ core object
-    -- และ InitializeStateBags/PersistStateBags ใน player.lua ใช้ช่องเดียวกันนี้อยู่แล้ว
+    -- ต้องมิเรอร์ลง statebag ช่องเดียวกับ InitializeStateBags ใน player.lua สคริปต์อื่นจะได้อ่านได้โดยไม่ต้องขอ core object
     local state = Player(src).state
     for key, value in pairs(applied) do
         state:set(key, value, true)
@@ -74,9 +54,7 @@ local function writeStatus(src, values)
     return applied
 end
 
--- ============================================================
 -- รอบลดค่าตามเวลา
--- ============================================================
 
 CreateThread(function()
     while true do
@@ -108,12 +86,7 @@ CreateThread(function()
     end
 end)
 
--- ============================================================
--- ส่งค่าให้ client ตอนเพิ่งโหลดตัวละครเสร็จ
--- ============================================================
--- hexa_status เปิดหน้าจอตอนไหนก็ได้ แต่ค่าแรกต้องมาจากที่นี่เสมอ
--- (PlayerLoaded ยิงก่อน NUI ของ hexa_status พร้อม ตัว client จึงขอซ้ำได้ด้วย
---  HexaCore:Server:RequestStatus ข้างล่าง)
+-- PlayerLoaded ยิงก่อน NUI ของ hexa_status พร้อม client จึงต้องขอซ้ำได้ด้วย RequestStatus ข้างล่าง
 AddEventHandler('HexaCore:Server:PlayerLoaded', function(ply)
     local src = ply.PlayerData.source
     local status = readStatus(src)
@@ -130,9 +103,7 @@ RegisterNetEvent('HexaCore:Server:RequestStatus', function()
     end
 end)
 
--- ============================================================
 -- exports
--- ============================================================
 
 exports('GetStatus', function(src, key)
     local status = readStatus(src)
@@ -159,9 +130,7 @@ exports('RemoveStatus', function(src, key, amount)
     return writeStatus(src, { [key] = status[key] - (tonumber(amount) or 0) })
 end)
 
--- ============================================================
 -- คำสั่งแอดมิน
--- ============================================================
 
 HexaCore.Commands.Add('setstatus', 'ตั้งค่าสถานะร่างกายของผู้เล่น', {
     { name = 'id',    help = 'ไอดีผู้เล่น' },

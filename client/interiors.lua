@@ -645,8 +645,7 @@ CreateThread(function()
             "IntGroup_Downes_pulp_novel"
         })
 
-        -- outside -- vector3(1784.90, -821.65, 42.86)
-        -- inside -- vector3(1785.01,-821.53,191.01)
+        -- outside vector3(1784.90, -821.65, 42.86) / inside vector3(1785.01, -821.53, 191.01)
         ActivateInteriorEntitySets(77313, "Lemoyne Speak Easy", {
             "mp006_mshine_band2",
             "mp006_mshine_shelfwall1",
@@ -657,8 +656,7 @@ CreateThread(function()
             "mp006_mshine_theme_floral"
         })
         
-        -- outside -- vector3(-1085.63, 714.14, 103.32)
-        -- inside -- vector3(-1085.63, 714.14, 83.23)
+        -- outside vector3(-1085.63, 714.14, 103.32) / inside vector3(-1085.63, 714.14, 83.23)
         ActivateInteriorEntitySets(77569, "Cattail Pond Speakeasy", {
             "mp006_mshine_band2",
             "mp006_mshine_shelfwall1",
@@ -669,8 +667,7 @@ CreateThread(function()
             "mp006_mshine_theme_hunter"
         })
         
-        -- outside -- vector3(-2769.23, -3048.90, 11.38)
-        -- inside -- vector3(-2769.3, -3048.87, -9.7)
+        -- outside vector3(-2769.23, -3048.90, 11.38) / inside vector3(-2769.3, -3048.87, -9.7)
         ActivateInteriorEntitySets(78337, "New Austin Speakeasy", {
             "mp006_mshine_band2",
             "mp006_mshine_shelfwall1",
@@ -681,8 +678,7 @@ CreateThread(function()
             "mp006_mshine_location4"
         })
         
-        -- outside -- vector3(1627.64, 822.9, 144.03)
-        -- inside -- vector3(1627.64, 822.9, 123.94)
+        -- outside vector3(1627.64, 822.9, 144.03) / inside vector3(1627.64, 822.9, 123.94)
         ActivateInteriorEntitySets(78593, "Hanover Speakeasy", {
             "mp006_mshine_band2",
             "mp006_mshine_shelfwall1",
@@ -692,8 +688,7 @@ CreateThread(function()
             "mp006_mshine_theme_refined"
         })
         
-        -- outside -- vector3(-1861.7, -1722.17, 108.35)
-        -- inside -- vector3(-1861.7, -1722.17, 88.35)
+        -- outside vector3(-1861.7, -1722.17, 108.35) / inside vector3(-1861.7, -1722.17, 88.35)
         ActivateInteriorEntitySets(77825, "Manzanita Post Speakeasy", {
             "mp006_mshine_band2",
             "mp006_mshine_shelfwall1",

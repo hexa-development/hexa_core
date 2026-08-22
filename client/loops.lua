@@ -1,8 +1,6 @@
--- ลูปนับเวลาเซฟเคยอยู่ตรงนี้ ย้ายไป server/save.lua แล้ว
--- client เป็นคนนับเวลาแปลว่าไม่ยิงก็ไม่มีวันเซฟ และเปิดทางให้สั่งเขียน DB รัว ๆ ได้ด้วย
+-- ลูปนับเวลาเซฟย้ายไป server/save.lua แล้ว ถ้า client นับเอง ไม่ยิงก็ไม่เซฟ และเปิดทางเขียน DB รัว ๆ (docs guide/persistence)
 
--- ปิดปุ่ม/prompt ของเกมที่ไม่ต้องการ
--- (DisableControlAction มีผลแค่เฟรมเดียว จำเป็นต้องเรียกทุกเฟรม)
+-- ปิดปุ่ม/prompt ของเกมที่ไม่ต้องการ ต้องเรียกทุกเฟรมเพราะ DisableControlAction มีผลแค่เฟรมเดียว
 CreateThread(function()
     while true do
         Wait(0)

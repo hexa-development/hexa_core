@@ -1,28 +1,14 @@
--- ============================================================
--- ระบบ spawn อัตโนมัติฝั่ง client: โหลดเสร็จลงพื้นทันที
--- ============================================================
--- ไม่มีหน้าจอเลือกจุดเกิด — พอเกมโหลดเสร็จจะขอข้อมูลจาก server
--- แล้ววาร์ปไปตำแหน่งที่เซฟไว้ (หรือ Config.DefaultSpawn ถ้าเป็นตัวละครใหม่)
---
--- ตอน restart resource กลางเกม: server เซฟตำแหน่ง/ข้อมูลทุกคนไว้ก่อนหยุด
--- แล้วฝั่งนี้จะโหลดตัวละครใหม่เต็มรูปแบบ + วาร์ปกลับจุดล่าสุดอัตโนมัติ
+-- spawn อัตโนมัติ ไม่มีหน้าจอเลือกจุดเกิด: ขอตำแหน่งจาก server (ตัวใหม่ = Config.DefaultSpawn), docs guide/persistence
 
 local spawned = false
 local resuming = false
 
--- logout / unload: รีเซ็ตธง spawned เพื่อให้เลือกตัวละครใหม่แล้ว spawn ได้อีก
--- (ไม่งั้น SpawnPlayer รอบต่อไปจะถูก guard `if spawned then return` บล็อกทิ้ง)
+-- ต้องรีเซ็ตธง spawned ตอน unload ไม่งั้น guard `if spawned then return` บล็อก SpawnPlayer รอบถัดไปทิ้ง
 RegisterNetEvent('HexaCore:Client:OnPlayerUnload', function()
     spawned = false
 end)
 
--- ============================================================
--- ทำให้ mp_male / mp_female ร่างเปล่ามองเห็นครบตัว (ไม่มีเสื้อผ้า)
--- ============================================================
--- mp_male/mp_female เป็น metaped เปล่า - spawn มาจะล่องหน/ชิ้นส่วนหาย เพราะไม่มี component ติดมา
--- ต้อง "enable ชิ้นส่วนร่างกายพื้นฐาน" ทีละหมวดด้วย hash จริงจากเกม
--- hash ชุดนี้ = ตัวแรกของแต่ละหมวดใน data/clothes_list ของ rb_appearance
--- (ตรงกับ ComponentsMale/Female[cat][1] ที่ FixIssues ใช้ = ร่างเปล่าพื้นฐาน)
+-- mp_male/female เป็น metaped เปล่า ต้อง enable ชิ้นส่วนร่างกายเอง ไม่งั้นล่องหน (hash = ตัวแรกของหมวดใน rb_appearance)
 local BASE_COMPONENTS = {
     male = {
         0xF6496128, -- BODIES_UPPER  (ลำตัวท่อนบน)
@@ -66,8 +52,7 @@ function applyNakedBase(ped, sex)
     Citizen.InvokeNative(0x77FF8D35EEC6BBC4, ped, 7, false) -- SetMetaPedType (7 = player metaped)
     updatePedVariation(ped)
 
-    -- enable ชิ้นส่วนร่างกายพื้นฐานทีละหมวด (ตัวแก้ล่องหน/ชิ้นส่วนหายตัวจริง)
-    -- วน retry จน component โหลดครบ (0xA0BC8FAED8CFEB3C = HasPedComponentLoaded)
+    -- enable ทีละหมวดแล้ววน retry จน component โหลดครบ (0xA0BC8FAED8CFEB3C = HasPedComponentLoaded)
     for attempt = 1, 10 do
         for i = 1, #parts do
             setPedComponentEnabled(ped, parts[i])
@@ -79,9 +64,7 @@ function applyNakedBase(ped, sex)
 end
 
 CreateThread(function()
-    -- เปิดใช้ hexa_multicharacter อยู่ = ปิด auto-login ของ hexa_core
-    -- ให้ multichar เป็นคนขับ flow (โชว์หน้าเลือกตัวละคร แล้วสั่ง spawn ผ่าน
-    -- HexaCore:Client:SpawnPlayer เอง) - handler ด้านล่างยังทำงานให้ multichar เรียก
+    -- เปิด MultiCharacter อยู่ = ปิด auto-login ให้ multichar เป็นคนสั่ง spawn เอง (handler ด้านล่างยังทำงานให้)
     if HexaCore.Config.MultiCharacter then return end
 
     resuming = NetworkIsSessionStarted()
@@ -93,9 +76,7 @@ CreateThread(function()
         while not NetworkIsSessionStarted() do Wait(100) end
     end
 
-    -- RedM สร้าง ped ของผู้เล่นให้เองหลัง session เริ่ม - ไม่ต้องเรียก spawnmanager
-    -- (เซิร์ฟเก่า rb_multicharacter/rb_spawn ก็แค่รอแบบนี้ ไม่เคยเรียก spawnmanager)
-    -- รอจนมีตัวละครในโลก ถ้าเกิน 10 วิยังไม่มา ค่อยใช้ spawnmanager เป็น fallback
+    -- RedM สร้าง ped ให้เองหลัง session เริ่ม แค่รอ ไม่ต้องเรียก spawnmanager — เกิน 10 วิยังไม่มาค่อยใช้เป็น fallback
     local ped = PlayerPedId()
     local pedDeadline = GetGameTimer() + 10000
     local forcedSpawn = false
@@ -160,8 +141,7 @@ RegisterNetEvent('HexaCore:Client:SpawnPlayer', function(pos, health, gender)
 
     FreezeEntityPosition(ped, true)
 
-    -- วาร์ปไปตำแหน่งเป้าหมาย: ตำแหน่งล่าสุดจาก DB
-    -- (ตอน restart = จุดที่ยืนอยู่ล่าสุด เพราะ server เซฟไว้ก่อนหยุดเสมอ)
+    -- วาร์ปไปตำแหน่งล่าสุดจาก DB (ตอน restart = จุดที่ยืนล่าสุด เพราะ server เซฟก่อนหยุดเสมอ)
     SetEntityCoordsNoOffset(ped, pos.x, pos.y, pos.z, false, false, false)
     SetEntityHeading(ped, pos.w or 0.0)
 
@@ -178,9 +158,7 @@ RegisterNetEvent('HexaCore:Client:SpawnPlayer', function(pos, health, gender)
         SetEntityCoordsNoOffset(ped, pos.x, pos.y, groundZ + 0.1, false, false, false)
     end
 
-    -- ตั้ง mp_male เป็น "ร่างเปล่า" (ไม่มีเสื้อผ้า) *หลัง* วาร์ป+collision โหลดเสร็จแล้ว
-    -- (ทำตอนตัวยังถูกซ่อน/ไม่มีพื้น component mesh จะสตรีมไม่เข้า = ล่องหน)
-    -- port ตรงจาก FixIssues ของ rb_appearance ที่ใช้งานได้จริง 100%
+    -- ตั้งร่างเปล่า *หลัง* วาร์ป+collision โหลดเสร็จ ทำก่อนหน้านั้น component mesh จะสตรีมไม่เข้า = ล่องหน
     ped = PlayerPedId()
     applyNakedBase(ped, sex)
 

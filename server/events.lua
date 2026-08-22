@@ -22,8 +22,7 @@ local readyFunction = MySQL.ready
 local databaseConnected = readyFunction == nil
 if readyFunction ~= nil then
     MySQL.ready(function()
-        -- รอ server/installer.lua สร้างตาราง users จาก install.sql ให้เสร็จก่อน
-        -- (weight/slots ไม่ได้เก็บใน DB แล้ว - ใช้ค่าจาก Config.Player.PlayerDefaults)
+        -- รอ installer สร้างตาราง users ก่อน (weight/slots ไม่ได้เก็บใน DB แล้ว ใช้ค่าจาก Config.Player.PlayerDefaults)
         if AwaitSchemaReady then AwaitSchemaReady(15000) end
         databaseConnected = true
     end)
@@ -42,8 +41,7 @@ local function onPlayerConnecting(name, _, deferrals)
     deferrals.update(string.format('Hello %s. กำลังตรวจสอบตัวตนผู้เล่น...', name))
     local identifier = HexaCore.GetIdentifier(src)
 
-    -- ไม่มี identifier ที่ต้องใช้ (เช่นตั้งค่า steam แต่ผู้เล่นไม่ได้เปิดเกมผ่าน Steam)
-    -- -> เตะออกจากหน้าโหลด/หน้าเชื่อมต่อทันที พร้อมข้อความบอกสาเหตุ
+    -- ไม่มี identifier ตามที่ตั้งค่าไว้ (เช่นบังคับ steam แต่ไม่ได้เปิดผ่าน Steam) ต้องตัดจบตั้งแต่หน้าเชื่อมต่อ
     if not identifier then
         if (HexaCore.Config.IdentifierType or 'license') == 'steam' then
             return deferrals.done('เซิร์ฟเวอร์นี้ต้องเปิดเกมผ่าน Steam (ไม่พบ Steam ID) กรุณาเปิด Steam ให้ล็อกอินอยู่ แล้วเปิด RDR2 ผ่าน Steam อีกครั้ง')
@@ -80,15 +78,13 @@ end)
 
 -- Player
 
--- คูลดาวน์ต่อผู้เล่น: Save() เขียนแถว users ทั้งแถว (accounts/inventory/loadout/metadata/position)
--- + SaveInventory ของ hexa_inventory ถ้าปล่อยให้ client ยิงรัวๆ จะถล่ม MySQL ทั้งเซิร์ฟ
+-- Save() เขียนแถว users ทั้งแถว + SaveInventory ปล่อยให้ client ยิงรัวเมื่อไหร่ MySQL ถล่มทั้งเซิร์ฟ ดู docs guide/persistence
 local lastSave = {}
 local SAVE_COOLDOWN_MS = 30000
 
 AddEventHandler('playerDropped', function() lastSave[source] = nil end)
 
--- AddEventHandler ไม่ใช่ RegisterNetEvent: client ยิงสั่งเขียน DB เองไม่ได้อีกแล้ว
--- เหลือทางเดียวคือ [bridge]/rsg-core ส่งต่อมาฝั่ง server ซึ่งยังโดนคูลดาวน์ตัวเดียวกัน
+-- ต้องเป็น AddEventHandler ไม่ใช่ RegisterNetEvent ไม่งั้น client สั่งเขียน DB เองได้ตรงๆ
 AddEventHandler('HexaCore:UpdatePlayer', function()
     local src = source
     local now = GetGameTimer()
@@ -99,9 +95,7 @@ AddEventHandler('HexaCore:UpdatePlayer', function()
     Player.Save()
 end)
 
--- คีย์ metadata ที่ยอมให้ client เขียนเองได้เท่านั้น
--- ที่เหลือ (injail / isdead / criminalrecord / rep / walletid / fingerprint ฯลฯ) ต้องให้ฝั่ง server
--- เรียก Player.SetMetaData เอง ไม่งั้น client ยิง event ตรงมาเคลียร์คุก/ปั้ม rep ได้
+-- ไวต์ลิสต์เท่านั้น คีย์อื่น (injail / rep / criminalrecord ฯลฯ) ถ้าเปิดให้ client เขียน = เคลียร์คุก/ปั้ม rep เองได้
 local CLIENT_SETTABLE_META = {
     hunger = true, thirst = true, cleanliness = true, stress = true,
 }
@@ -175,12 +169,7 @@ RegisterNetEvent('HexaCore:CallCommand', function(command, args)
     end
 end)
 
--- Use this for player vehicle spawning
--- Vehicle server-side spawning callback (netId)
--- use the netid on the client with the NetworkGetEntityFromNetworkId native
--- convert it to a vehicle via the NetToVeh native
--- callback นี้ไม่เคยตรวจอะไรเลย ใครก็ยิงได้ไม่จำกัดจำนวน จนถมเซิร์ฟด้วยยานพาหนะได้ในไม่กี่วินาที
--- กันด้วยสามด่าน: ต้องโหลดตัวละครแล้ว, ตรวจชนิดของอาร์กิวเมนต์, และคูลดาวน์ต่อคน
+-- คืน netId ไม่ใช่ตัวรถ (client ต้อง NetworkGetEntityFromNetworkId แล้ว NetToVeh เอง) และสามด่านนี้กันยิงถมเซิร์ฟด้วยรถ
 local lastVehicleSpawn = {}
 local VEHICLE_SPAWN_COOLDOWN_MS = 3000
 
@@ -205,20 +194,7 @@ HexaCore.CreateCallback('HexaCore:Server:SpawnVehicle', function(source, cb, mod
     cb(NetworkGetNetworkIdFromEntity(veh))
 end)
 
--- ============================================================
--- CSRF failure report (advisory only)
--- ============================================================
--- เดิมคือ 'HexaCore:Server:KickCSRF' ซึ่ง DropPlayer(source) ทันทีที่ client ยิงมา
--- ปัญหาเชิงออกแบบ: token ทั้งชุดถูกสร้าง/ส่ง/ตรวจอยู่ฝั่ง client เองทั้งหมด
--- (ดู hexa_core/client/events.lua) server ไม่มีข้อมูลจะยืนยันเลย จึงเท่ากับ
--- "client สั่งให้ server เตะ" ไม่ใช่การตัดสินใจของ server
---
--- ตอนนี้รับเป็น "รายงาน" แล้ว server ตัดสินใจเองตาม Config.Security.CSRFFailurePolicy
---   'log'  (ค่าเริ่มต้น) = บันทึกไว้อย่างเดียว ไม่ทำอะไรกับผู้เล่น
---   'kick' = เตะเมื่อรายงานถึงเกณฑ์ CSRFFailureThreshold ภายใน window เดียวกัน
---
--- ต้องนับ + จำกัดความถี่ด้วย เพราะ event นี้ client ยิงรัวได้: ถ้าไม่จำกัด ก็ยิง
--- มาถล่มให้ console เต็มหรือ (ตอนตั้ง kick) ใช้เป็นทางเตะตัวเองรัว ๆ ได้
+-- รายงาน CSRF เท่านั้น: token ตรวจฝั่ง client ล้วน server ยืนยันไม่ได้ จึงตัดสินตาม Config.Security.CSRFFailurePolicy
 local CSRF_WINDOW_MS = 10000
 
 local csrfReports = {}   -- [src] = { count = n, windowStart = ms }

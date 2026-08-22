@@ -1,6 +1,4 @@
--- ชั้นรองรับชื่อเก่า ฝั่ง server
--- โหลดท้ายสุดใน fxmanifest เพราะต้องเห็นฟังก์ชันจริงครบทุกตัวก่อนถึงจะผูก alias ได้
--- ทุกตัวที่นี่จะถูกถอดออกเมื่อกวาดแก้ resource ภายนอกครบแล้ว
+-- ชั้น alias ชื่อเก่า ต้องโหลดท้ายสุดใน fxmanifest เพราะต้องเห็นฟังก์ชันจริงครบก่อนถึงผูกได้ ดู docs guide/upgrading
 
 -- ชื่อเดิม -> ชื่อใหม่ เรียกได้ปกติแต่เตือนครั้งเดียวต่อชื่อ พร้อมบอกว่า resource ไหนเป็นคนเรียก
 local RENAMED = {
@@ -55,8 +53,7 @@ for oldName, newName in pairs(RENAMED) do
     deprecate(oldName, newName)
 end
 
--- HexaCore.Player.* ทั้งก้อนถูกยุบทิ้ง แต่โค้ดเก่ายังเขียน HexaCore.Player.Save(src) อยู่ จึงคืนเนมสเปซปลอมให้
--- __index จับทุกชื่อ ไม่ใช่แค่ที่เปลี่ยนชื่อ เพราะ CreatePlayer / DeleteCharacter ก็ย้ายมาอยู่บน Core เหมือนกัน
+-- เนมสเปซปลอมแทน HexaCore.Player.* ที่ยุบทิ้ง __index ต้องจับทุกชื่อ ไม่ใช่แค่ตัวที่เปลี่ยนชื่อ เพราะย้ายขึ้น Core หมด
 Core.Player = setmetatable({}, {
     __index = function(_, key)
         local target = RENAMED_LIFECYCLE[key] or key
@@ -71,8 +68,7 @@ Core.Player = setmetatable({}, {
     end,
 })
 
--- เจ้าของสั่งให้เก็บสามตัวนี้ไว้เตือนก่อนหนึ่งรอบ ไม่ลบทันที เพราะสคริปต์ qb/rsg ที่ยังไม่ได้ลงอาจเรียกถึง
--- ระบบชื่อเสียงถูกถอดออกแล้ว ค่าที่คืนจึงเป็นค่าว่างที่ปลอดภัยไม่ใช่ค่าที่แกล้งทำเป็นว่ามีระบบอยู่
+-- ระบบชื่อเสียงถูกถอดแล้ว แต่ต้องคง stub ไว้เตือนสคริปต์ qb/rsg ก่อนหนึ่งรอบ และคืนค่าว่างไม่ใช่ค่าปลอม
 local REMOVED_PLAYER_METHODS = {
     AddRep    = function() return false end,
     RemoveRep = function() return false end,

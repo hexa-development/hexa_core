@@ -1,5 +1,4 @@
-﻿-- ตาราง Functions ถูกสร้างพร้อม metatable มิเรอร์ไว้แล้วใน main.lua
--- ประกาศซ้ำตรงนี้เท่ากับล้าง mirror ทิ้ง แล้ว bridge ที่ยกฟังก์ชันด้วย pairs() จะได้ศูนย์ตัว
+﻿-- ห้ามประกาศตาราง Functions ซ้ำที่นี่ จะล้าง metatable มิเรอร์ของ main.lua ทิ้ง จน bridge ที่ยกด้วย pairs() ได้ศูนย์ตัว
 
 -- Asset loading helpers (native replacements for ox_lib)
 
@@ -62,9 +61,7 @@ function HexaCore.TriggerCallback(name, cb, ...)
     TriggerServerEvent('HexaCore:Server:TriggerCallback', name, ...)
 end
 
--- HexaCore.Debug เคยอยู่ตรงนี้ ตัวมันรับ (resource, obj, depth) ส่วนฝั่ง server รับ (tbl, indent)
--- ชื่อเดียวกันแต่คนละ signature ทำให้จุดที่เรียกแบบฝั่ง server พิมพ์ข้อความไปตกช่อง resource
--- ตอนนี้แยกเป็น Core.PrintDebug (พิมพ์บรรทัด) กับ Core.DumpTable (พิมพ์ตาราง) นิยามที่ shared/log.lua
+-- ใช้ Core.PrintDebug/Core.DumpTable ที่ shared/log.lua แทน HexaCore.Debug เดิมที่ชน signature ฝั่ง server (docs guide/logging)
 
 -- Player
 
@@ -79,8 +76,7 @@ function HexaCore.GetCoords(entity)
 end
 
 function HexaCore.HasItem(items, amount)
-    -- เช็ค started เหมือนฝั่ง server (hexa_core/server/functions.lua) — resource
-    -- ที่ถามว่า "มีของไหม" ตอน hexa_inventory ยังไม่ขึ้น ควรได้ false ไม่ใช่ error
+    -- เช็ค started เหมือนฝั่ง server: ถามตอน hexa_inventory ยังไม่ขึ้น ต้องได้ false ไม่ใช่ error
     if GetResourceState('hexa_inventory') ~= 'started' then return false end
     return exports['hexa_inventory']:HasItem(items, amount)
 end
@@ -90,8 +86,7 @@ end
 ---@param speed number - The speed at which the entity should turn
 ---@return number - The time at which the entity was looked at
 function HexaCore.TurnPedToFaceEntity(entity, timeout, speed)
-    -- ต้องเช็คชนิดก่อนเรียก native: DoesEntityExist ที่รับ string/table จะ error
-    -- ตั้งแต่บรรทัดแรก ทำให้ guard บรรทัดถัดไปไม่มีโอกาสได้ทำงานเลย
+    -- ต้องเช็คชนิดก่อน: DoesEntityExist ที่รับ string/table จะ error ทันที guard บรรทัดถัดไปไม่มีโอกาสทำงาน
     if type(entity) ~= 'number' then return end
     if not DoesEntityExist(entity) then return end
     if speed and type(speed) ~= 'number' then return end
@@ -143,11 +138,7 @@ function HexaCore.PlayAnim(animDict, animName, upperbodyOnly, duration)
     RemoveAnimDict(animDict)
 end
 
--- GetEntityModel คืน "hash ตัวเลข" ไม่ใช่ชื่อ string เดิมเทียบกับ
--- 'mp_m_freemode_01' ตรง ๆ ซึ่งเป็นการเทียบ number กับ string = false เสมอ
--- ผลคือผู้เล่นชายก็ถูกตัดสินด้วยตาราง FemaleNoGloves ทุกครั้ง
--- (โมเดลของสแตกนี้คือ mp_male / mp_female ตาม Config.Player.DefaultModel
---  ส่วนสองชื่อ freemode ค้างมาจากต้นทาง FiveM - เก็บไว้ทั้งคู่ให้ครอบคลุม)
+-- ต้องคีย์ด้วย hash เพราะ GetEntityModel คืนตัวเลข เทียบกับชื่อ string ตรง ๆ ได้ false เสมอ ชายจะตกไปใช้ FemaleNoGloves
 local MALE_MODELS = {
     [joaat('mp_male')] = true,
     [joaat('mp_m_freemode_01')] = true,
@@ -745,11 +736,7 @@ function HexaCore.GetGroundCoords(coords)
     end
 end
 
--- อ่านผล shapetest: บิลด์ RedM ผูกชื่อ native กลุ่มนี้ไม่เหมือนกัน บิลด์ที่ใช้
--- อยู่ไม่มี GetShapeTestResultEx เลย เดิมเรียกชื่อนั้นตรง ๆ ในตัวฟังก์ชัน
--- -> "attempt to call a nil value" ทุกครั้งที่มีใครเรียก GetGroundHash
--- เลือกตัวที่มีจริงตอนโหลดครั้งเดียว (ห้ามใช้ rawget(_G): runtime lua54 ผูก
--- native ผ่าน metatable ของ _G จะได้ nil ทั้งที่ native มีอยู่)
+-- เลือก native อ่านผล shapetest ตอนโหลด บิลด์นี้ไม่มี GetShapeTestResultEx และห้าม rawget(_G) เพราะ native ผูกผ่าน metatable
 local shapeTestResult
 do
     local withMaterial = GetShapeTestResultIncludingMaterial

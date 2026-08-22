@@ -1,6 +1,4 @@
-﻿---------------------------------------------------
--- Helper tables to map money items - do not change
----------------------------------------------------
+﻿-- Helper tables to map money items - do not change
 
 local moneyItems = {
     cash = {
@@ -20,9 +18,7 @@ local moneyMap = {
     blood_cent = "bloodCents"
 }
 
--------------------
 -- Helper functions
--------------------
 
 local function getInventoryMoney(playerData)
     local money = {
@@ -60,9 +56,7 @@ local function calculateTotal(dollars, cents)
     return tonumber(string.format("%.2f", dollars + (cents / 100)))
 end
 
-----------------------------
 -- Money operations hanlders
-----------------------------
 
 local function handleAddMoney(src, moneytype, amount)
     local player = HexaCore.GetPlayer(src)
@@ -93,9 +87,7 @@ local function handleRemoveMoney(src, moneytype, amount)
     local availableDollars = inventoryMoney[moneyMap[dollarName]] or 0
     local availableCents = inventoryMoney[moneyMap[centName]] or 0
     local totalAvailableCents = (availableDollars * 100) + availableCents
-    -- math.round ไม่มีในไลบรารีมาตรฐานของ Lua และ hexa_core ก็ไม่ได้ประกาศไว้
-    -- (ตัวที่มีคือ Shared.Round ใน shared/main.lua) เดิมเรียก math.round ตรง ๆ
-    -- แล้วพังทันทีที่ EnableMoneyItems = true และมีการหักเงิน
+    -- ห้ามใช้ math.round ไม่มีจริงใน Lua (ตัวที่มีคือ Shared.Round) เคยพังมาแล้วตอน EnableMoneyItems = true แล้วหักเงิน
     local requiredCents = math.floor((amount * 100) + 0.5)
 
     if totalAvailableCents < requiredCents then
@@ -150,15 +142,11 @@ local function handleSetMoney(src, moneytype, amount)
     end
 end
 
------------------------------------------------------------------
 -- If config changed, handle inventory items accordingly on login
------------------------------------------------------------------
 
 local initialized = {}
 
--- event นี้ client เป็นคนยิงและมี resource อื่นอีกหกตัวรอฟังอยู่ จึงถอดออกไม่ได้
--- แต่การกระทบยอดไอเทมเงินด้านล่างต้องทำครั้งเดียวต่อการเข้าเกมหนึ่งครั้ง
--- ไม่งั้นยิงซ้ำเมื่อไหร่ก็ได้เงินงอกเพิ่มทุกครั้ง
+-- event นี้ client ยิงเองได้และถอดออกไม่ได้ ต้องกันให้กระทบยอดครั้งเดียวต่อการเข้าเกม ไม่งั้นยิงซ้ำ = เงินงอก
 local reconciled = {}
 
 AddEventHandler('playerDropped', function() reconciled[source] = nil end)
@@ -174,10 +162,7 @@ AddEventHandler('HexaCore:Server:OnPlayerLoaded', function()
     end
     reconciled[src] = true
 
-    -- ไม่มีระบบ inventory (hexa_inventory) = ไม่มีเมธอดจัดการไอเทม (GetItemsByName ฯลฯ)
-    -- ข้ามการจัดการไอเทมเงินไปเลย กัน error ตอนผู้เล่น login
-    -- (เมธอดชุดนี้ประกาศไว้ที่ server/player.lua แล้ว และคืนค่าปลอดภัยเองเมื่อ
-    --  hexa_inventory ไม่ได้ start อยู่ การเช็คนี้จึงเหลือไว้เป็นด่านสุดท้าย)
+    -- ด่านสุดท้ายกัน error ตอน login เมื่อไม่มี hexa_inventory จึงไม่มีเมธอดไอเทมให้เรียก
     if not player.GetItemsByName then
         initialized[player.PlayerData.citizenid] = true
         return
@@ -213,9 +198,7 @@ AddEventHandler('HexaCore:Server:OnPlayerLoaded', function()
     initialized[player.PlayerData.citizenid] = true
 end)
 
--------------------------------------------------------------
 -- Enable handlers and synchronization when enabled in config
--------------------------------------------------------------
 
 if HexaCore.Config.Money.EnableMoneyItems then
 

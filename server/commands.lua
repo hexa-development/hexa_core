@@ -7,8 +7,7 @@ HexaCore.Commands.IgnoreList = { -- ระดับที่ไม่ต้อ�
 
 HexaCore.Commands.Permissions = {'admin', 'staff'} -- ระดับสิทธิ์ในเซิร์ฟเวอร์ (ต้องตรงกับ permissions.cfg) — admin = สูงสุด, staff = ทีมงาน
 
--- Admin commands target players by their permanent citizen id (the
--- sequential id handed out on character creation), not the session id.
+-- คำสั่งแอดมินอ้างผู้เล่นด้วย citizen id ถาวร ไม่ใช่ session id ที่เปลี่ยนทุกครั้งที่เข้าเกม ดู docs api/commands
 local function GetPlayerByCid(id)
     if not id then return nil end
     return HexaCore.GetPlayerByCitizenId(tostring(id))
@@ -227,8 +226,7 @@ end, 'admin')
 -- Job
 
 HexaCore.Commands.Add('job', Lang:t('command.job.help'), {}, false, function(source)
-    -- GetPlayer คืน nil ได้ (ยังไม่เลือกตัวละคร / พิมพ์จาก console ที่ source = 0)
-    -- เดิมอ่าน .PlayerData.job ต่อจากค่า nil ทันที -> error ทุกครั้งที่เกิดเคสนั้น
+    -- ต้องเช็ค nil ก่อน GetPlayer คืน nil ได้เมื่อยังไม่โหลดตัวละครหรือพิมพ์จาก console ที่ source = 0
     local Player = HexaCore.GetPlayer(source)
     local PlayerJob = Player and Player.PlayerData and Player.PlayerData.job
     if not PlayerJob then

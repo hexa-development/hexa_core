@@ -1,10 +1,4 @@
-﻿-- ============================================================
--- ระบบ login + spawn อัตโนมัติ (ไม่มีหน้าจอเลือกตัวละคร/จุดเกิด)
--- ============================================================
--- client โหลดเสร็จจะยิง HexaCore:Server:RequestSpawn เข้ามา แล้วฝั่งนี้จะ:
---   1. หาตัวละครล่าสุดของ license นี้ในฐานข้อมูล
---   2. ถ้ามี -> login ตัวนั้น / ถ้าไม่มี -> สร้างตัวละครใหม่ให้อัตโนมัติ
---   3. ส่งตำแหน่ง + เลือดกลับไปให้ client วาร์ปลงพื้นทันที
+﻿-- login + spawn อัตโนมัติ ไม่มีหน้าจอเลือกตัวละคร ไม่เจอตัวละครก็สร้างใหม่ให้เลย ดู docs guide/player-object
 
 local spawning = {} -- กันการยิง RequestSpawn ซ้ำระหว่างที่กำลัง login อยู่
 
@@ -20,8 +14,7 @@ end
 RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
     local src = source
 
-    -- login ไปแล้ว (client ขอซ้ำเพราะรอบแรกตอบไม่ถึง) -> ส่งข้อมูลเดิมกลับไปใหม่
-    -- ห้าม return เงียบๆ ไม่งั้น client จะค้างรอตลอด
+    -- login ไปแล้วแต่ client ขอซ้ำ ต้องตอบข้อมูลเดิมกลับ ห้าม return เงียบ ไม่งั้น client ค้างรอตลอด
     if HexaCore.Players[src] then
         return sendSpawn(src, HexaCore.Players[src])
     end
@@ -37,8 +30,7 @@ RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
         return DropPlayer(src, Lang:t('error.no_valid_license'))
     end
 
-    -- ครอบด้วย pcall เพื่อให้ spawning ถูกเคลียร์เสมอแม้ login พัง
-    -- ไม่งั้น error หนึ่งครั้ง = ผู้เล่นขอ spawn ใหม่ไม่ได้อีกเลย
+    -- ต้องครอบ pcall ให้ spawning ถูกเคลียร์เสมอ ไม่งั้น error ครั้งเดียว = ผู้เล่นขอ spawn ใหม่ไม่ได้อีกเลย
     local ok, err = pcall(function()
         -- หาตัวละครของ license นี้ (ตาราง users สไตล์ ESX: identifier = license)
         local citizenid = MySQL.scalar.await('SELECT citizenid FROM users WHERE identifier = ? ORDER BY last_seen DESC LIMIT 1', { license })
@@ -64,5 +56,4 @@ AddEventHandler('playerDropped', function()
     spawning[source] = nil
 end)
 
--- การเซฟตอน resource หยุดย้ายไปอยู่ server/save.lua แล้ว เพราะของเดิมเรียก SavePlayer ตรง ๆ
--- ซึ่งข้าม PullStateBags ทำให้ค่าหิว กระหาย สะอาด เครียด ที่ค้างใน statebag หายทุกครั้งที่รีสตาร์ท
+-- เซฟตอน resource หยุดอยู่ที่ server/save.lua แล้ว เพราะ SavePlayer ตรงๆ ข้าม PullStateBags ค่าสถานะเลยหายทุกรีสตาร์ท

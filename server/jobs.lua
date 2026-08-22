@@ -1,13 +1,7 @@
--- ============================================================
--- โหลดอาชีพจากฐานข้อมูล (ตาราง jobs + job_grades สไตล์ ESX)
--- ============================================================
--- ฐานข้อมูลเป็นแหล่งข้อมูลอาชีพเพียงแหล่งเดียว (Shared.Jobs เริ่มต้นว่าง)
--- install.sql จะสร้าง + seed อาชีพเริ่มต้นให้อัตโนมัติตอนบูตครั้งแรก
--- แก้ไข/เพิ่มอาชีพ: แก้ข้อมูลใน DB โดยตรง แล้ว restart hexa_core
+-- ตาราง jobs + job_grades ใน DB คือแหล่งอาชีพแหล่งเดียว (Shared.Jobs เริ่มว่าง) แก้แล้วต้อง restart ดู docs guide/items-jobs
 
 local function loadJobsFromDatabase()
-    -- ไม่ห่อ pcall ไว้ คิวรีที่ล้ม (ตารางหาย เชื่อมต่อหลุด) จะฆ่าเธรดนี้เงียบ ๆ
-    -- แล้ว Shared.Jobs ค้างว่าง ผลคือทุกคนกลายเป็นคนตกงานโดยไม่มีอะไรฟ้องว่าเพราะอะไร
+    -- ต้องห่อ pcall คิวรีล้มแล้วเธรดตายเงียบ = Shared.Jobs ค้างว่าง ทุกคนตกงานโดยไม่มีอะไรฟ้อง
     local ok, jobRows = pcall(MySQL.query.await, 'SELECT * FROM jobs')
     if not ok then
         Hexa.Error('could not read the jobs table - every player will load as unemployed. %s', tostring(jobRows))

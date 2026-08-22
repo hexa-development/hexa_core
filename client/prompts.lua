@@ -1,16 +1,4 @@
---[[
-    hexa_core prompt API
-    -------------------------------------------------------------------
-    The visual layer is now rendered by hexa_interaction (RedM-style HTML/NUI)
-    instead of the native UiPrompt system. All public exports and their
-    signatures are unchanged, so every resource that calls
-        exports['hexa_core']:createPrompt(...)
-        exports['hexa_core']:createPromptGroup(...)
-        exports['hexa_core']:deletePrompt(...)
-        exports['hexa_core']:deletePromptGroup(...)
-    keeps working with zero changes. Distance (Config.PromptDistance)
-    and the 1000ms hold-to-confirm behaviour are preserved.
-]]
+-- ชั้นภาพย้ายไป hexa_interaction แล้ว แต่ export/signature เดิมคงไว้ครบ ระยะและกดค้าง 1000ms เท่าเดิม (docs api/exports)
 
 local Prompts = {}
 local PromptGroups = {}
@@ -32,13 +20,7 @@ local function executeOptions(options)
     end
 end
 
--- ทั้งสแตกใช้มาตรฐานเดียวกัน: กดค้าง ENTER 1000ms  ค่า key ที่ผู้เรียกส่งมา
--- จึงถูกมองข้าม (เก็บไว้ในตาราง Prompts ตามเดิมเพื่อไม่ให้ getPrompt เปลี่ยนรูป)
---
--- createPromptGroup: ทุกตัวในกลุ่มใช้ปุ่มเดียวกันหมดแล้ว กด ENTER ค้างครบ
---   หนึ่งครั้งจะยิง onComplete ของสมาชิก "ทุกตัว" พร้อมกัน  ตอนนี้ยังไม่มี
---   resource ไหนในสแตกเรียก createPromptGroup ถ้าจะเริ่มใช้ ต้องเปลี่ยนเป็น
---   เปิดเมนูให้เลือกรายการแทน หรือปล่อยให้กลุ่มใช้ปุ่มแยกกันตามเดิม
+-- ทั้งสแตกกดค้าง ENTER 1000ms เสมอ (key ที่ส่งมาถูกมองข้าม) กลุ่มก็ใช้ปุ่มเดียวกัน กดครั้งเดียวยิง onComplete ทุกตัวในกลุ่ม
 local PROMPT_KEY  = 'ENTER'
 local PROMPT_HOLD = 1000
 
@@ -49,8 +31,7 @@ local function createPrompt(name, coords, key, text, options)
         coords   = coords,
         key      = PROMPT_KEY,
         label    = text,
-        -- ป้ายในเกมเป็นอังกฤษเสมอ: ผู้เรียกส่ง options.promptLabel มาทับได้
-        -- ไม่ส่ง = hexa_interaction ตกกลับไปใช้ text ตามเดิม
+        -- ป้ายในเกมเป็นอังกฤษเสมอ ส่ง options.promptLabel มาทับได้ ไม่ส่ง hexa_interaction จะตกกลับไปใช้ text
         promptLabel = options and options.promptLabel or nil,
         distance = Config.PromptDistance,
         visibleDistance = Config.PromptVisible,

@@ -1,27 +1,11 @@
--- ============================================================
 -- Automatic database installer
--- ============================================================
--- Runs install.sql once the DB connection is ready, so the framework's base
--- tables (users, jobs, job_grades, items) are
--- created without a manual import step.
---
--- Safe to run on every boot: install.sql only contains idempotent DDL
--- (CREATE TABLE IF NOT EXISTS) plus ALTER statements whose "already exists"
--- errors are treated as benign and skipped.
---
--- A statement that fails for any other reason is logged and the installer
--- continues with the remaining statements, so one bad statement cannot leave
--- the rest of the schema uncreated.
---
--- Other server scripts in this resource can call AwaitSchemaReady(timeoutMs)
--- to block until the schema has been applied (used by server/events.lua so
--- its players-column check does not race table creation on a fresh database).
+
+-- รันตอนบูตทุกครั้งได้เพราะ DDL เป็น idempotent, error "already exists" ถูกข้าม, ตัวที่ล้มเหตุอื่นถูก log แล้วเดินต่อจนครบ
 
 local resourceName = GetCurrentResourceName()
 local schemaReady = false
 
--- Blocks the calling thread until install.sql has been applied (or the
--- timeout elapses). Returns true once the schema is ready.
+-- บล็อกเธรดที่เรียกจนกว่า install.sql จะถูกใช้เสร็จหรือหมดเวลา คืน true เมื่อ schema พร้อม
 function AwaitSchemaReady(timeoutMs)
     local waited = 0
     local timeout = timeoutMs or 15000
@@ -32,14 +16,7 @@ function AwaitSchemaReady(timeoutMs)
     return schemaReady
 end
 
--- Same wait, for other resources. install.sql here is the ONLY schema in the
--- stack (hexa_inventory has no installer of its own), so anything that queries
--- users_vault / item_drops / users must call this first, or its first SELECT can
--- race the CREATE TABLE on a fresh database.
---
---   exports['hexa_core']:AwaitSchemaReady(15000)
---
--- Blocks the calling thread, so call it inside a CreateThread.
+-- resource อื่นต้องเรียกก่อน SELECT ตารางใด ๆ (install.sql คือ schema เดียวของสแตก) และเรียกใน CreateThread เพราะบล็อก
 exports('AwaitSchemaReady', AwaitSchemaReady)
 
 local function printLog(kind, message)
@@ -47,8 +24,7 @@ local function printLog(kind, message)
     print(('[%s]%s %s^7'):format(resourceName, color, message))
 end
 
--- Errors that just mean "this migration already ran". Matched case-insensitively
--- against the driver message so it works on both MySQL 8 and MariaDB.
+-- error ที่แปลว่า "migration นี้รันไปแล้ว" เทียบแบบไม่สนตัวพิมพ์ใหญ่เล็ก ให้ครอบทั้ง MySQL 8 และ MariaDB
 local benignPatterns = {
     'duplicate column name',    -- 1060: ADD COLUMN that is already there
     'duplicate key name',       -- 1061: ADD INDEX / ADD UNIQUE KEY already there
@@ -69,11 +45,7 @@ local function isBenign(err)
     return false
 end
 
--- Drop whole-line '--' comments. This MUST happen before splitting on ';',
--- not after: a semicolon inside a comment would otherwise end a statement
--- early, and the prose following it on the same line has no leading '--' of
--- its own, so it would survive the strip and be prepended to the next
--- statement as garbage.
+-- ต้องตัดคอมเมนต์ก่อนแยกด้วย ';' ไม่งั้น ';' ในคอมเมนต์จะตัดคำสั่งกลางคัน แล้วข้อความที่เหลือจะติดไปกับคำสั่งถัดไป
 local function stripComments(sql)
     local kept = {}
     for line in (sql .. '\n'):gmatch('(.-)\n') do
@@ -84,8 +56,7 @@ local function stripComments(sql)
     return table.concat(kept, '\n')
 end
 
--- Split a SQL script into individual statements on ';' boundaries,
--- discarding blank statements.
+-- แยกสคริปต์ SQL เป็นคำสั่งทีละอันที่ ';' และทิ้งคำสั่งว่าง
 local function splitStatements(sql)
     local statements = {}
     for statement in (stripComments(sql) .. ';'):gmatch('(.-);') do
@@ -131,8 +102,6 @@ end
 
 MySQL.ready(function()
     runInstall()
-    -- Always release waiters, even if some statements failed - a stuck flag
-    -- would block player connections forever, which is worse than one more
-    -- logged SQL error.
+    -- ปล่อยคนที่รออยู่เสมอแม้บางคำสั่งพัง เพราะแฟล็กค้างจะบล็อกการเข้าเซิร์ฟเวอร์ตลอดไป
     schemaReady = true
 end)

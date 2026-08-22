@@ -1,6 +1,4 @@
--- รอบบันทึกข้อมูลผู้เล่นลงฐานข้อมูล
--- เดิมรอบเวลาเดินอยู่ที่ client (client/loops.lua ยิง HexaCore:UpdatePlayer เข้ามา) ซึ่งแปลว่าไม่ยิงก็ไม่เซฟ
--- ตอนนี้ server เป็นเจ้าของรอบเวลาทั้งหมด client ไม่มีสิทธิ์สั่งเซฟอีกแล้ว
+-- รอบเซฟต้องเดินฝั่ง server เท่านั้น ถ้าให้ client ยิงเข้ามาแปลว่าไม่ยิงก็ไม่เซฟ ดู docs guide/persistence
 
 local function saveConfig()
     return Core.Config and Core.Config.Save or nil
@@ -58,9 +56,7 @@ function Core.SaveAllPlayers()
     return saved
 end
 
--- resource กำลังหยุดหรือเซิร์ฟกำลังปิด เขียนทุกคนลงให้ครบก่อน
--- เดิมจุดนี้เรียก Core.SavePlayer(src) ตรง ๆ ซึ่งข้าม PullStateBags ทำให้ค่าหิว กระหาย สะอาด เครียด
--- ที่ค้างอยู่ใน statebag หายทุกครั้งที่รีสตาร์ท ต้องเรียกผ่าน Player.Save() เท่านั้น
+-- ต้องเซฟผ่าน Player.Save() เท่านั้น Core.SavePlayer ตรงๆ ข้าม PullStateBags ค่าสถานะใน statebag เลยหายทุกรีสตาร์ท
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     if saveConfig() and saveConfig().OnResourceStop == false then return end

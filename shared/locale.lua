@@ -12,8 +12,7 @@ local function translateKey(phrase, subs)
         return phrase
     end
 
-    -- We should be escaping gsub just in case of any
-    -- shenanigans with nested template patterns or injection
+    -- ยังไม่ได้ escape pattern ของ gsub ระวัง template ซ้อนหรือ pattern ที่ผู้ใช้ยัดเข้ามา
 
     -- Create and copy our return string
     local result = phrase
@@ -127,8 +126,7 @@ end
 --- @param phraseTarget string | table
 --- @param prefix string
 function Locale:delete(phraseTarget, prefix)
-    -- If the target is a string, we know that this is the end
-    -- of nested table tree.
+    -- เป็น string แปลว่าถึงปลายสุดของ tree แล้ว
     if type(phraseTarget) == 'string' then
         self.phrases[phraseTarget] = nil
     else

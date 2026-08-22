@@ -459,8 +459,7 @@ RequestImap(-2144587490) -- Covers small plot hole with mound of dirt
 -- RequestImap(146746575)
 -- RequestImap(-960136064)
 
--- ############# -- Braithwaite Mansion
---Mansion Interior
+-- ############# -- Braithwaite Mansion -- Mansion Interior
 RequestImap(1149195254)  --Brathwaite House Shell
 -- RequestImap(-1643869063) -- House Burnt Down
 RequestImap(58066174)  -- Interior
@@ -2457,9 +2456,7 @@ RemoveImap(1173561253)    -- Blackwater -- Town Hall -- Tents Beside City Hall N
 RemoveImap(1641449717)  -- Blackwater -- Town Hall -- Grass along path near tents
 -- End of Blackwater Town Hall
 
---------------------------------
 -- RSG Discoveries
---------------------------------
 RequestImap(291732199)
 RequestImap(120117259)
 --RequestImap(146172383)

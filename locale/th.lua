@@ -97,9 +97,7 @@ local Translations = {
     },
 }
 
--- NOTE: en.lua is loaded first by fxmanifest and uses `Lang = Lang or ...`,
--- so a `Lang or` here would keep English forever. Assign unconditionally so
--- the Thai locale (loaded last) wins. Delete/rename this file to go back to EN.
+-- ต้องกำหนดทับตรง ๆ ห้ามใช้ `Lang or` เพราะ en.lua โหลดก่อน ไทยที่โหลดทีหลังถึงจะชนะ (ลบไฟล์นี้ = กลับไปใช้ EN)
 Lang = Locale:new({
     phrases = Translations,
     warnOnMissing = true

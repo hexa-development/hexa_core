@@ -1,20 +1,8 @@
--- ============================================================
--- hexa_core — ระบบสถานะร่างกาย (ฝั่ง client)
--- ============================================================
--- ฝั่งนี้ไม่ได้เป็นคนลดค่า — server/status.lua เป็นคนนับเวลาและคำนวณให้ทั้งหมด
--- หน้าที่ของไฟล์นี้มีสองอย่างเท่านั้น:
---   1. หักเลือดตอนหิวจัด/กระหายจัด (แตะ ped จริง ทำที่ server ไม่ได้)
---   2. เก็บค่าล่าสุดไว้ให้ hexa_status (หรือ resource อื่น) ดึงไปวาด
---
--- ที่ดึงค่าไปใช้:
---   exports['hexa_core']:GetStatus()          -> { hunger=, thirst=, cleanliness=, stress= }
---   exports['hexa_core']:GetStatus('hunger')  -> ตัวเลขเดียว
---   AddEventHandler('HexaCore:Client:UpdateNeeds', function(status) ... end)
+-- hexa_core — สถานะร่างกาย (client): server นับเวลา/คำนวณให้ ที่นี่แค่หักเลือดตอนหิวจัด (ต้องแตะ ped) และแคชค่าให้ HUD
 
 local StatusKeys = { 'hunger', 'thirst', 'cleanliness', 'stress' }
 
---- ค่าล่าสุดที่ server ส่งมา — เริ่มที่ 100 ไว้ก่อนเพื่อไม่ให้ HUD วาดแถบว่างเปล่า
---- ในช่วงไม่กี่เฟรมก่อน UpdateNeeds ก้อนแรกจะมาถึง
+--- ค่าล่าสุดจาก server — เริ่มที่ 100 ไว้ก่อน กัน HUD วาดแถบว่างช่วงก่อน UpdateNeeds ก้อนแรกมาถึง
 local status = { hunger = 100, thirst = 100, cleanliness = 100, stress = 0 }
 
 local function clamp(value)
@@ -25,9 +13,7 @@ local function statusConfig()
     return HexaCore.Config and HexaCore.Config.Status or nil
 end
 
--- ============================================================
 -- รับค่าจาก server
--- ============================================================
 
 RegisterNetEvent('HexaCore:Client:UpdateNeeds', function(incoming)
     if type(incoming) ~= 'table' then return end
@@ -36,10 +22,7 @@ RegisterNetEvent('HexaCore:Client:UpdateNeeds', function(incoming)
     end
 end)
 
--- metadata เดินทางมาสองทาง: UpdateNeeds (ทางตรง ยิงเฉพาะตอนค่าสถานะขยับ) กับ
--- SetPlayerData ก้อนใหญ่ (ยิงทุกครั้งที่ playerdata ช่องไหนก็ได้เปลี่ยน)
--- ต้องรับทั้งคู่ ไม่งั้นสคริปต์ที่เรียก SetMetaData ตรงๆ โดยไม่ผ่าน export ของเรา
--- จะทำให้ HUD ค้างค่าเก่าไว้จนถึงรอบลดค่าถัดไป
+-- ต้องรับ SetPlayerData ด้วย ไม่ใช่แค่ UpdateNeeds ไม่งั้นสคริปต์ที่เรียก SetMetaData ตรงๆ จะทำให้ HUD ค้างค่าเก่า
 RegisterNetEvent('HexaCore:Player:SetPlayerData', function(playerData)
     local metadata = playerData and playerData.metadata
     if type(metadata) ~= 'table' then return end
@@ -48,8 +31,7 @@ RegisterNetEvent('HexaCore:Player:SetPlayerData', function(playerData)
     end
 end)
 
--- ขอค่าชุดแรกเมื่อโหลดตัวละครเสร็จ — PlayerLoaded ฝั่ง server ก็ยิงมาให้อยู่แล้ว
--- แต่ resource ที่ restart กลางเกม (เช่น hexa_status) ไม่ได้เห็นเหตุการณ์นั้น
+-- ขอค่าชุดแรกซ้ำเอง เพราะ resource ที่ restart กลางเกม (เช่น hexa_status) ไม่ได้เห็น PlayerLoaded รอบแรก
 RegisterNetEvent('HexaCore:Client:OnPlayerLoaded', function()
     TriggerServerEvent('HexaCore:Server:RequestStatus')
 end)
@@ -61,9 +43,7 @@ AddEventHandler('onClientResourceStart', function(resource)
     end
 end)
 
--- ============================================================
 -- หักเลือดตอนหิวจัด / กระหายจัด
--- ============================================================
 
 CreateThread(function()
     while true do
@@ -97,16 +77,7 @@ CreateThread(function()
     end
 end)
 
--- ============================================================
--- แกนทอง (cores) + หลอดสเตมินา
--- ============================================================
--- RDR2 แยกค่าเป็นสองชั้น: "แกนทอง" (วงในที่ไหลลงเองตามเวลา) กับ "หลอดนอก" (ค่าจริงที่ใช้วิ่ง/ยิง)
--- แกนทองไหลลงเมื่อไหร่ หลอดนอกก็เติมกลับได้ไม่เต็มอีกต่อไป — และค่าพวกนี้ผูกกับ "ตัว ped"
--- ไม่ใช่ตัวผู้เล่น ped ตัวใหม่ (เกิดใหม่ / เปลี่ยนโมเดลตอนสร้างตัวละคร/เปลี่ยนชุด) จึงไม่ได้
--- สืบค่าเดิมมาเลย ผลคือเพิ่งเข้าเกมก็ได้สเตมินามาไม่เต็มหลอดทั้งที่ยังไม่ได้วิ่ง
---
--- เซิร์ฟนี้นับหิว/กระหายเองอยู่แล้ว (ด้านบน) แกนของเกมจึงถูกกดเต็มค้างไว้แทน
--- ส่วนหลอดนอกเติมให้เฉพาะตอน ped เปลี่ยนตัวเท่านั้น ไม่งั้นวิ่งเท่าไหร่ก็ไม่มีวันเหนื่อย
+-- แกนทอง/สเตมินา: ค่าผูกกับ ped ไม่ใช่ผู้เล่น ped ใหม่จึงไม่สืบค่าเดิม — กดแกนเต็มค้าง หลอดนอกเติมเฉพาะตอน ped เปลี่ยน
 
 --- coreIndex ของ _SET_ATTRIBUTE_CORE_VALUE: 0 = สุขภาพ, 1 = สเตมินา, 2 = เดดอาย
 local Cores = {
@@ -125,8 +96,7 @@ local function getCoreValue(ped, index)
     return tonumber(Citizen.InvokeNative(0x36731AC041289BB1, ped, index, Citizen.ResultAsInteger())) or 0
 end
 
---- เติมแกนให้ถึงค่าที่ตั้งไว้ + (ถ้าสั่ง) เติมหลอดสเตมินาด้านนอกจนเต็ม
---- เขียนเฉพาะแกนที่ยังไม่ถึงค่าเป้าหมาย — เขียนทับทุกรอบไอคอนแกนจะกะพริบให้เห็นทุก 5 วิ
+--- เติมแกน (+ หลอดสเตมินาถ้าสั่ง) เฉพาะแกนที่ยังไม่ถึงเป้า — เขียนทับทุกรอบไอคอนแกนจะกะพริบทุก 5 วิ
 local function refillCores(fullStamina)
     local cfg = coresConfig()
     if not cfg or not cfg.enabled then return end
@@ -154,9 +124,7 @@ local function refillCores(fullStamina)
     end
 end
 
--- ped เปลี่ยนตัวเมื่อไหร่ = ถือว่าเพิ่งเกิด/เพิ่งเปลี่ยนโมเดล ให้เติมหลอดนอกให้ด้วยหนึ่งครั้ง
--- (ดักด้วยการเทียบ handle ถูกกว่าการไปไล่ดักทุกเหตุการณ์ที่สร้าง ped ใหม่)
--- ฟื้นจากตายนับด้วย: หมอชุบ/แอดมิน revive ได้ ped ตัวเดิมกลับมาแต่หลอดสเตมินาว่างเปล่า
+-- เทียบ handle ped + ธงตาย = รู้ว่าเพิ่งเกิด/เปลี่ยนโมเดล/ถูกชุบ (ชุบแล้ว ped เดิมกลับมาแต่สเตมินาว่าง) จึงเติมหลอดนอก
 CreateThread(function()
     local lastPed = 0
     local wasDead = false
@@ -185,9 +153,7 @@ AddEventHandler('HexaCore:Client:OnPlayerLoaded', function()
     refillCores(true)
 end)
 
--- ============================================================
--- exports
--- ============================================================
+-- exports — รายละเอียดพารามิเตอร์/ค่าที่คืน ดู docs api/exports
 
 exports('GetStatus', function(key)
     if key then return status[key] end
@@ -199,9 +165,7 @@ exports('GetStatus', function(key)
     }
 end)
 
---- เติมแกน (และหลอดสเตมินา) ให้เต็มเดี๋ยวนี้ — สคริปต์อื่นเรียกได้หลังชุบ/หลังเปลี่ยนโมเดล
---- exports['hexa_core']:RefillCores()      -- เติมแกน + หลอดสเตมินา
---- exports['hexa_core']:RefillCores(false) -- เติมเฉพาะแกน ไม่ยุ่งกับหลอดสเตมินา
+--- เติมแกน+หลอดสเตมินาเดี๋ยวนี้ (ส่ง false = เฉพาะแกน) สำหรับสคริปต์อื่นเรียกหลังชุบ/เปลี่ยนโมเดล
 exports('RefillCores', function(fullStamina)
     refillCores(fullStamina ~= false)
 end)

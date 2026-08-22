@@ -1,8 +1,4 @@
-﻿-- Built-in notification
--- ปลายทางจริงคือ hexa_notify (toast NUI) ถ้ามัน started ก็ส่งต่อไปให้มันวาด
--- ห้ามให้ hexa_notify มา RegisterNetEvent('HexaCore:Notify') เองเด็ดขาด —
--- event นี้มี handler อยู่ตรงนี้แล้ว ถ้าไปฟังซ้ำจะได้แจ้งเตือนสองครั้งทุกครั้ง
--- ส่วน chat:addMessage ข้างล่างคือทางถอยเมื่อไม่มี hexa_notify
+﻿-- Notify: ส่งต่อ hexa_notify (ไม่มีก็ถอยไป chat) — ห้าม hexa_notify ฟัง HexaCore:Notify เอง ไม่งั้นแจ้งเตือนซ้ำสองครั้ง
 local notifyColors = {
     error = { 214, 66, 66 },
     success = { 66, 214, 111 },
@@ -45,11 +41,9 @@ local function PlacePedOnGroundProperly(ped, coord)
     end
 end
 
--- Player load and unload handling
--- New method for checking if logged in across all scripts (optional)
--- if LocalPlayer.state['isLoggedIn'] then
--- ปิด "เลือดฟื้นเองจากแกนสุขภาพ" ของ RDR2
--- ตั้ง 0.0 = ไม่ฟื้นเลย / 1.0 = ฟื้นตามเกมเดิม (ที่นี่ที่เดียว ไม่มีใน config)
+-- โหลด/ออกตัวละคร — สคริปต์อื่นเช็คสถานะได้ด้วย: if LocalPlayer.state['isLoggedIn'] then (ดู docs guide/player-object)
+
+-- ปิดเลือดฟื้นเองจากแกนสุขภาพของ RDR2 — 0.0 = ไม่ฟื้น, 1.0 = ตามเกมเดิม (ตั้งตายตัวที่นี่ ไม่มีใน config)
 local function DisableHealthRecharge()
     local ped = PlayerPedId()
     -- ตัวแรกรับ "player index" ไม่ใช่ ped — ส่ง ped เข้าไปเท่ากับสั่งคนละคน (ไม่ได้ปิดอะไรเลย)
@@ -57,10 +51,7 @@ local function DisableHealthRecharge()
     Citizen.InvokeNative(0xDE1B1907A83A1550, ped, 0.0)        -- _SET_HEALTH_RECHARGE_MULTIPLIER(ped, int)
 end
 
--- ค่านี้ผูกกับตัว ped ไม่ใช่ตัวผู้เล่น เกมจึงรีเซ็ตกลับเป็นค่าเริ่มต้นทุกครั้งที่
--- ped ถูกสร้าง/ฟื้นใหม่ (เกิดใหม่ / ถูกหมอชุบ / แอดมิน revive / เปลี่ยนโมเดล)
--- ตั้งครั้งเดียวตอน login จึงไม่พอ — พอตายรอบแรกเลือดก็กลับมาไต่ขึ้นเอง
--- ตอกซ้ำทุก 5 วิ (สอง native ต่อรอบ ถูกกว่าการไปดักทุกเหตุการณ์ที่สร้าง ped ใหม่)
+-- ค่านี้ผูกกับ ped เกมรีเซ็ตทุกครั้งที่ ped ใหม่ (เกิด/ชุบ/เปลี่ยนโมเดล) ตั้งตอน login ครั้งเดียวไม่พอ ต้องตอกซ้ำ
 CreateThread(function()
     while true do
         Wait(5000)
@@ -205,10 +196,7 @@ RegisterNetEvent('HexaCore:Client:TriggerCallback', function(name, ...)
     end
 end)
 
--- Me command
--- Thai-capable font. rb_thaifont only STREAMS ThaiFont.gfx; register + use it here
--- directly. RegisterFontId returns -1 for a few frames until the gfx streams in, so
--- poll briefly and cache. Falls back to native font 2 until ready.
+-- คำสั่ง me: rb_thaifont แค่สตรีม ThaiFont.gfx ต้อง register เอง และ RegisterFontId คืน -1 ช่วงแรก จึง poll+cache
 local thaiFont
 CreateThread(function()
     RegisterFontFile('ThaiFont')            -- streamed .gfx asset name (no extension)
@@ -276,29 +264,13 @@ RegisterNetEvent('HexaCore:Client:OnSharedUpdateMultiple', function(tableName, v
     TriggerEvent('HexaCore:Client:UpdateObject')
 end)
 
--- Shared ทั้งก้อน (Items/Jobs/...) ส่งมาตอน connecting และตอน RequestSpawn
---
--- ต้องยิง 'HexaCore:Client:UpdateObject' ต่อเสมอ: resource อื่นเก็บ core object
--- เป็น "สำเนา msgpack" จาก GetCoreObject() (ดู hexa_inventory/shared/compat.lua)
--- แล้วรอสัญญาณนี้เพื่อดึงสำเนาใหม่ ถ้าไม่ยิง สำเนาที่เขาถืออยู่จะเป็นแคตตาล็อก
--- ว่างค้างทั้ง session -> HexaCore.Shared.Items[...] พลาดหมด (อาการที่เจอ:
--- ไอเทมชนิดที่ไม่เคยมีในกระเป๋า ซื้อแล้วไม่ขึ้นจนกว่าจะ restart resource)
+-- Shared (Items/Jobs): ต้องยิง UpdateObject ต่อ ไม่งั้นสำเนา core object ของ resource อื่นค้างว่างทั้ง session
 RegisterNetEvent('HexaCore:Client:SharedUpdate', function(shared)
     HexaCore.Shared = shared
     TriggerEvent('HexaCore:Client:UpdateObject')
 end)
 
--- ============================================================
--- CSRF protection (NUI <-> client only)
--- ============================================================
--- ขอบเขตที่แท้จริงของกลไกนี้: กันไม่ให้หน้า NUI *อื่น* (หรือ iframe/สคริปต์ที่หลุด
--- เข้ามาในเบราว์เซอร์ของ client) ยิง callback ปลอมเข้ามาที่ Lua ฝั่ง client
---
--- ไม่ใช่ระบบความปลอดภัยฝั่ง server และห้ามใช้แทนกันเด็ดขาด:
--- token ถูกสร้างที่ client ส่งเข้า NUI ของ client เอง แล้ว client ตรวจเอง
--- ผู้เล่นที่ควบคุมเครื่องตัวเองอยู่แล้วเลี่ยงได้ทั้งเส้น (ไม่เรียก validateCSRF
--- ก็ได้) อำนาจตัดสินใจจริงต้องอยู่ที่ server ทุกครั้ง — ดูการเช็คสิทธิ์/ระยะ/
--- จำนวนเงินฝั่ง server ใน resource ต่าง ๆ
+-- CSRF (NUI<->client เท่านั้น): กัน NUI อื่นยิง callback ปลอม ไม่ใช่ความปลอดภัยฝั่ง server ที่ต้องตัดสินใจเองเสมอ
 local csrfToken = nil
 
 local function GenerateCSRFToken()
@@ -321,10 +293,7 @@ RegisterNUICallback('validateCSRF', function(data, cb)
         return cb({ valid = true })
     end
 
-    -- เดิมบรรทัดนี้คือ TriggerServerEvent('HexaCore:Server:KickCSRF') ซึ่ง server
-    -- เตะทันทีตามคำสั่ง client = "client สั่งให้ server เตะตัวเอง" ไม่ใช่การตัดสินใจ
-    -- ของ server เลย ตอนนี้เปลี่ยนเป็นการ "รายงาน" แล้ว server เป็นคนตัดสินเองว่า
-    -- จะทำอะไรตาม Config.Security.CSRFFailurePolicy (ค่าเริ่มต้น = log เท่านั้น)
+    -- รายงานเฉยๆ ไม่สั่งเตะ (เดิม client สั่ง server เตะตัวเอง) — server ตัดสินตาม Config.Security.CSRFFailurePolicy
     TriggerServerEvent('HexaCore:Server:ReportCSRFFailure')
     cb({ valid = false })
 end)

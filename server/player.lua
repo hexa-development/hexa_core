@@ -1,17 +1,11 @@
 ﻿HexaCore.Players = {}
 HexaCore.Player = {}
 
--- On player login get their data or set defaults
--- Don't touch any of this unless you know what you are doing
--- Will cause major issues!
+-- โหลดข้อมูลผู้เล่นตอน login หรือเติมค่าเริ่มต้น แก้ตรงนี้ผิดพังทั้งระบบ (docs guide/player-object)
 
 local resourceName = GetCurrentResourceName()
 
--- ============================================================
--- ตัวแปลงระหว่างแถวตาราง users (สไตล์ ESX) กับ PlayerData ของ hexa_core
--- ============================================================
--- DB เก็บแบบ ESX (คอลัมน์แยก) แต่ในเกมยังใช้ PlayerData โครงสร้างเดิม
--- (citizenid, money, charinfo, job, metadata) โค้ดส่วนอื่นจึงไม่ต้องแก้
+-- ตัวแปลงแถว users (สไตล์ ESX) กับ PlayerData: DB เก็บคอลัมน์แยกแต่ในเกมใช้โครงเดิม โค้ดส่วนอื่นจึงไม่ต้องแก้
 
 -- แถว users -> PlayerData (ช่องที่ขาดจะถูกเติมโดย applyDefaults ใน CheckPlayerData)
 local function UserRowToPlayerData(row)
@@ -34,14 +28,7 @@ local function UserRowToPlayerData(row)
         job = row.job and { name = row.job, grade = { level = tonumber(row.job_grade) or 0 } } or nil,
         position = row.position and json.decode(row.position) or nil,
         metadata = metadata,
-        -- ของในตัวเก็บแยก 2 คอลัมน์แบบ esx (inventory = ของทั่วไป, loadout = อาวุธ)
-        -- แต่ในหน่วยความจำรวมกลับเป็นตารางช่องก้อนเดียวเหมือนเดิม โค้ดส่วนอื่นจึง
-        -- ไม่ต้องรู้เรื่องการแยกคอลัมน์เลย
-        --
-        -- ไม่เก็บ PlayerData.loadout แยกไว้ตรงนี้โดยตั้งใจ: items คือแหล่งความจริง
-        -- เดียวตอนรันไทม์ ถ้ามีสำเนา loadout ไว้อีกชุดมันจะค้างเก่าทันทีที่ผู้เล่น
-        -- หยิบ/ทิ้งอาวุธ (ต้องการ loadout แบบ esx ให้เรียก xPlayer.getLoadout()
-        -- ใน hexa_inventory/src/lib/sv.lua ซึ่งคำนวณสดจาก items)
+        -- DB แยก inventory/loadout แต่รันไทม์รวมเป็นก้อนเดียว ห้ามเก็บสำเนา loadout เพราะ items คือแหล่งความจริงเดียว
         items = HexaCore.Storage.BuildSlots(row.inventory, row.loadout),
     }
 end
@@ -66,10 +53,7 @@ local function BuildUserRow(PlayerData, coords)
         dateofbirth = PlayerData.charinfo and PlayerData.charinfo.birthdate or nil,
         sex = (PlayerData.charinfo and PlayerData.charinfo.gender == 1) and 'f' or 'm',
         position = json.encode(coords or PlayerData.position or HexaCore.Config.DefaultSpawn),
-        -- แยกช่องเก็บของในหน่วยความจำออกเป็น 2 คอลัมน์แบบ esx: ของทั่วไป -> inventory,
-        -- อาวุธ -> loadout ใช้ codec ตัวเดียวกับที่ hexa_inventory:SaveInventory ใช้
-        -- (เดิมบรรทัดนี้ยัด PlayerData.items ดิบทั้งก้อนลง inventory ซึ่งคนละฟอร์แมต
-        -- กับที่ hexa_inventory เขียน ใครเซฟทีหลังก็ทับของอีกฝั่งทิ้ง)
+        -- ต้องใช้ codec ตัวเดียวกับ hexa_inventory:SaveInventory ไม่งั้นฟอร์แมตคนละแบบ ใครเซฟทีหลังทับของอีกฝั่งทิ้ง
         inventory = json.encode(HexaCore.Storage.EncodeInventory(PlayerData.items)),
         loadout = json.encode(HexaCore.Storage.EncodeLoadout(PlayerData.items)),
         metadata = json.encode(metadata),
@@ -101,15 +85,7 @@ function HexaCore.LoginPlayer(source, citizenid, newData)
             HexaCore.LoadPlayer(source, newData)
         end
 
-        -- ตัวละครเกิดมามีชีวิตเสมอตอน login (client/spawn.lua วางร่างลงพื้นแบบเป็น ๆ)
-        -- แต่ metadata ถูกโหลดดิบจาก DB ทั้งก้อน — ถ้ารอบก่อนหลุด/รีสตาร์ทเซิร์ฟตอน
-        -- ยังนอนหมดสติอยู่ isdead จะค้าง true ตลอดไป เพราะ hexa_unconscious ยิง
-        -- setDead(false) เฉพาะตอน "ออกจากสภาวะหมดสติ" ซึ่งจะไม่เกิดเลยถ้า ped ไม่เคย
-        -- ตายในรอบนี้ ผลคือ inventory เปิดไม่ได้ / ตกปลาไม่ได้ / หิวไม่ลด และที่หนักสุด
-        -- คือคนอื่นเปิดกระเป๋าปล้นได้ทั้งที่ยืนเดินอยู่ (เงื่อนไขปล้นดูจากธงตัวนี้)
-        --
-        -- แหล่งความจริงของการตายคือ ped สด (exports['hexa_unconscious']:IsDead())
-        -- ค่าที่เซฟไว้จึงมีแต่จะค้าง — ล้างทิ้งตอนเข้าเกมเสมอ
+        -- ล้าง isdead ที่ค้างจากรอบก่อนเสมอ แหล่งความจริงคือ ped สด ถ้าค้าง true คนอื่นเปิดกระเป๋าปล้นได้ทั้งที่ยืนอยู่
         local Player = HexaCore.Players[source]
         if Player and Player.PlayerData.metadata.isdead then
             Player.SetMetaData('isdead', false)
@@ -154,15 +130,7 @@ function HexaCore.GetOfflinePlayerByLicense(license)
     return nil
 end
 
--- ============================================================
--- ยุบบัญชีธนาคารแยกสาขาเดิมเข้าบัญชี 'bank' ตัวเดียว
--- ============================================================
--- เดิมธนาคารแต่ละเมืองเป็นประเภทเงินคนละตัว ตอนนี้ทั้งเซิร์ฟใช้บัญชีเดียว
--- ตัวละครเก่าจึงมีเงินค้างอยู่ในช่องเดิม ถ้าไม่รวมให้ตรงนี้เงินก้อนนั้นจะ
--- เข้าถึงไม่ได้อีกเลย (ไม่มี UI ไหนอ่านช่องเก่าแล้ว)
---
--- ทำก่อน applyDefaults เสมอ เพราะ applyDefaults เติมเฉพาะช่องที่ยังไม่มี
--- (`playerData[key] or value`) ถ้ารวมทีหลังยอดที่รวมได้จะถูกทับ
+-- ยุบบัญชีธนาคารสาขาเก่าเข้าช่อง bank (ไม่งั้นเงินก้อนนั้นเข้าถึงไม่ได้) ต้องทำก่อน applyDefaults ไม่งั้นยอดรวมถูกทับ
 local LEGACY_BANK_ACCOUNTS = { 'valbank', 'rhobank', 'blkbank', 'armbank' }
 
 local function MergeLegacyBankAccounts(PlayerData)
@@ -237,10 +205,7 @@ function HexaCore.LoadPlayer(source, PlayerData)
     applyDefaults(PlayerData, HexaCore.Config.Player.PlayerDefaults)
 
     if GetResourceState('hexa_inventory') == 'started' then
-        -- ตัวละครออฟไลน์ไม่มี source — ห้ามส่ง nil เป็นพารามิเตอร์ "กลางรายการ"
-        -- ข้าม resource boundary เพราะ citizenid จะเลื่อนไปนั่งตำแหน่ง source แทน
-        -- แล้ว LoadInventory จะ query ด้วย citizenid = NULL -> คืน {} เสมอ
-        -- ผลคือ GetOfflinePlayer() + Save() ทับกระเป๋าตัวละครนั้นเป็นค่าว่างถาวร
+        -- nil กลางรายการข้าม resource จะถูกตัด citizenid เลื่อนไปช่อง source แล้ว LoadInventory คืน {} ทับกระเป๋าว่าง
         PlayerData.items = exports['hexa_inventory']:LoadInventory(PlayerData.source or 0, PlayerData.citizenid)
     end
 
@@ -257,18 +222,14 @@ function HexaCore.LogoutPlayer(source)
     HexaCore.Players[source] = nil
 end
 
--- Create a new character
--- Don't touch any of this unless you know what you are doing
--- Will cause major issues!
+-- สร้างตัวละครใหม่ แก้ตรงนี้ผิดพังทั้งระบบ (docs guide/player-object)
 
 function HexaCore.CreatePlayer(PlayerData, Offline)
     local self = {}
     self.PlayerData = PlayerData
     self.Offline = Offline
 
-    -- ชั้น .Functions เดิมยังเรียกได้ตลอดช่วงเปลี่ยนผ่าน และต้องเป็นตารางจริงที่มีสมาชิกอยู่จริง
-    -- เพราะ wrapPlayer ของ [bridge]/rsg-core เช็ค type(hp.Functions)=='table' แล้วยกเมธอดด้วย pairs()
-    -- ถ้าเป็น proxy เปล่ามันจะคืน nil ให้ทุกผู้เล่น สคริปต์ RSG ทั้งเซิร์ฟก็ตายตามทันที
+    -- .Functions ต้องเป็นตารางจริง เพราะ wrapPlayer ของ rsg-core ยกเมธอดด้วย pairs() ถ้าเป็น proxy เปล่าสคริปต์ RSG ตายหมด
     self.Functions = {}
 
     -- เมธอดที่แขวนบนตัวผู้เล่นถูกมิเรอร์ลง .Functions ให้อัตโนมัติ รวมของที่ resource อื่นใส่เพิ่มตอน runtime
@@ -284,8 +245,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         __newindex = function(_, key, value) self[key] = value end,
     })
 
-    -- ธงบอกว่าข้อมูลเปลี่ยนตั้งแต่เซฟรอบล่าสุด รอบกวาดเซฟจะข้ามคนที่ยืนเฉย ๆ ไม่เขียนซ้ำทุกรอบ
-    -- ตั้งเป็น true ตั้งแต่แรกเพราะคนที่เพิ่งโหลดเข้ามายังไม่เคยถูกเขียนในรอบนี้เลย
+    -- ธงบอกว่าข้อมูลเปลี่ยนตั้งแต่เซฟรอบล่าสุด เริ่มเป็น true เพราะคนที่เพิ่งโหลดยังไม่เคยถูกเขียนในรอบนี้
     self.Dirty = true
 
     function self.MarkDirty()
@@ -344,33 +304,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         return HexaCore.HasItem(self.PlayerData.source, items, amount)
     end
 
-    -- ============================================================
-    -- Inventory methods on the player object
-    -- ============================================================
-    -- Only HasItem above used to exist here. AddItem / RemoveItem /
-    -- GetItemBySlot / GetItemByName / GetItemsByName / GetTotalWeight were
-    -- called by four resources but defined nowhere, so every one of those call
-    -- sites errored with "attempt to call a nil value":
-    --
-    --   hexa_inventory/server/events/events.lua  GetItemBySlot
-    --     -> 'hexa_inventory:server:updateHotbar', i.e. every hotbar refresh
-    --   hexa_banking/server/server.lua           GetItemBySlot/RemoveItem/AddItem
-    --     -> using a blood money clip, and the /bloodmoneyclip command
-    --   hexa_core/server/moneyitems.lua          GetItemsByName/AddItem
-    --     -> only reachable with Config.Money.EnableMoneyItems = true; it
-    --        already guarded with `if not player.GetItemsByName`
-    --   hexa_skin/server/sv_onboarding.lua       AddItem
-    --     -> guarded too, so it silently skipped granting starter items
-    --
-    -- They are defined here rather than installed by hexa_inventory on
-    -- HexaCore:Server:OnPlayerLoaded because handler order across resources
-    -- follows registration order: hexa_core loads first, so its own
-    -- OnPlayerLoaded handlers would still see the methods missing. Defining
-    -- them at construction means they exist before any event can fire.
-    --
-    -- Each one delegates to the hexa_inventory export, guarded the same way as
-    -- HexaCore.GetTotalWeight further down this file, so a stopped
-    -- inventory degrades to a safe return value instead of an error.
+    -- เมธอดกลุ่มนี้ต้องนิยามตอนสร้าง ไม่ใช่ตอน OnPlayerLoaded เพราะ hexa_core โหลดก่อนจึงยังไม่เห็น (docs api/player-methods)
     local function inventoryReady()
         return GetResourceState('hexa_inventory') == 'started'
     end
@@ -383,10 +317,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         if not inventoryReady() then return false, false end
         -- ของในตัวเปลี่ยนก็ต้องถูกเขียนรอบหน้า เพราะเส้นทางนี้ไม่ได้ผ่าน SyncPlayerData
         self.Dirty = true
-        -- slot/info are passed as false rather than nil on purpose: a nil in the
-        -- middle of an argument list is dropped as it crosses the resource
-        -- boundary, which shifts `reason` into the slot position and files the
-        -- item under an invisible slot name.
+        -- ส่ง slot/info เป็น false ไม่ใช่ nil เพราะ nil กลางรายการข้าม resource จะถูกตัดจน reason เลื่อนไปนั่งช่อง slot
         return exports['hexa_inventory']:AddItem(
             self.PlayerData.source, item, amount,
             slot or false, info or false, reason or 'hexa_core:player.AddItem')
@@ -435,8 +366,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
 
     function self.SetMetaData(meta, val)
         local function validateData(key, value)
-            -- stress เคยหลุดจากลิสต์นี้ ทั้งที่เป็นค่า 0-100 เหมือนกัน — ผลคือสคริปต์ที่บวก
-            -- ความเครียดรัวๆ ดันค่าทะลุ 100 แล้วแถบใน hexa_status ล้นกรอบ
+            -- stress เคยหลุดจากลิสต์นี้ ทั้งที่เป็นค่า 0-100 เหมือนกัน ค่าจึงทะลุ 100 แล้วแถบใน hexa_status ล้นกรอบ
             if key == 'hunger' or key == 'thirst' or key == 'cleanliness' or key == 'stress' then
                 value = math.min(math.max(tonumber(value) or 0, 0), 100)
             end
@@ -462,9 +392,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         return self.PlayerData.metadata[meta]
     end
 
-    -- metadata.rep มาจาก Config.Player.PlayerDefaults แต่ตัวละครที่ถูกเซฟไว้ก่อน
-    -- ที่ default ตัวนี้จะมี metadata ที่ไม่มีคีย์ rep เลย (applyDefaults เติมให้
-    -- เฉพาะคีย์ที่ยังไม่มี "ในชั้นบนสุด" ของ metadata) — อ่านตรง ๆ แล้วพังทันที
+    -- ตัวละครเก่าไม่มีคีย์ rep ใน metadata เพราะ applyDefaults เติมเฉพาะคีย์ชั้นบนสุด อ่านตรง ๆ แล้วพังทันที
     local function repTable()
         local metadata = self.PlayerData.metadata
         if type(metadata.rep) ~= 'table' then metadata.rep = {} end
@@ -499,10 +427,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         reason = reason or 'unknown'
         if type(moneytype) ~= 'string' then return false end
         moneytype = moneytype:lower()
-        -- amount ที่แปลงเป็นตัวเลขไม่ได้ (nil / "" / ตาราง / ค่าจาก JSON ที่เพี้ยน)
-        -- เดิมหลุดไปเทียบ `amount < 0` แล้วโยน "attempt to compare nil with number"
-        -- ทั้ง callback ที่เรียกมาก็ตายกลางทาง (เช่น hexa_redeemcode ที่จองสิทธิ์
-        -- แลกโค้ดไปแล้วแต่ยังไม่ได้จ่ายรางวัล = ผู้เล่นเสียโค้ดฟรี)
+        -- amount ที่แปลงเป็นตัวเลขไม่ได้เคยหลุดไปเทียบจนโยน error ตายกลาง callback (redeemcode ตัดโค้ดแล้วแต่ไม่ได้รางวัล)
         amount = tonumber(amount)
         if not amount or amount ~= amount or amount < 0 then return false end
         if not self.PlayerData.money[moneytype] then return false end
@@ -534,10 +459,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         if not amount or amount ~= amount or amount < 0 then return false end
         if not self.PlayerData.money[moneytype] then return false end
         local current = tonumber(self.PlayerData.money[moneytype]) or 0
-        -- เพดานล่างของการหักเงิน: ประเภทที่อยู่ใน DontAllowMinus ห้ามต่ำกว่า 0
-        -- ส่วนที่เหลือใช้ MinusLimit ได้ แต่ math.max บีบไม่ให้ต่ำกว่า 0 เสมอ (unconditional)
-        -- เดิม bank/bloodmoney ไม่อยู่ในลิสต์ + MinusLimit = -5000 -> RemoveMoney('bank', n) คืน true
-        -- ทั้งที่ยอดเป็น 0 = ทุกสคริปต์ที่ทำตามสัญญามาตรฐานแจกของฟรีได้ถึง $5,000 ต่อตัวละคร
+        -- บีบเพดานล่างไม่ให้ต่ำกว่า 0 เสมอ เดิม bank ไม่อยู่ใน DontAllowMinus + MinusLimit ติดลบ = ซื้อของฟรีได้ถึง $5,000
         local allowMinus = true
         for _, mtype in pairs(HexaCore.Config.Money.DontAllowMinus or {}) do
             if mtype == moneytype then
@@ -609,8 +531,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         HexaCore.LogoutPlayer(self.PlayerData.source)
     end
 
-    -- หลังแบนชั้น .Functions ทิ้ง AddMethod กับ AddField เขียนลงช่องเดียวกันแล้ว จึงยุบเหลือตัวเดียว
-    -- ชื่อเป็น Set เพราะมันเขียนทับเสมอ ไม่ได้ต่อท้ายแบบที่ Add สื่อ
+    -- AddMethod กับ AddField เขียนลงช่องเดียวกันแล้ว จึงยุบเหลือ SetField ตัวเดียวที่เขียนทับเสมอ
     local RESERVED_FIELDS = { PlayerData = true, Functions = true, Offline = true }
 
     function self.SetField(name, value)
@@ -673,15 +594,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
     end
 end
 
--- Add a new function to the Functions table of the player class
--- Use-case:
---[[
-    AddEventHandler('HexaCore:Server:PlayerLoaded', function(Player)
-        HexaCore.SetPlayerField(Player.PlayerData.source, "functionName", function(oneArg, orMore)
-            -- do something here
-        end)
-    end)
-]]
+-- แขวนเมธอดเพิ่มบนตัวผู้เล่นจาก resource อื่น ตัวอย่างการใช้ดู docs api/player-methods
 
 function HexaCore.SetPlayerField(ids, methodName, handler)
     local idType = type(ids)
@@ -702,13 +615,7 @@ function HexaCore.SetPlayerField(ids, methodName, handler)
     end
 end
 
--- Add a new field table of the player class
--- Use-case:
---[[
-    AddEventHandler('HexaCore:Server:PlayerLoaded', function(Player)
-        HexaCore.SetPlayerField(Player.PlayerData.source, "fieldName", "fieldData")
-    end)
-]]
+-- ใส่ฟิลด์ข้อมูลเพิ่มบนตัวผู้เล่น ตัวอย่างการใช้ดู docs api/player-methods
 
 function HexaCore.SetPlayerField(ids, fieldName, data)
     local idType = type(ids)
@@ -732,16 +639,12 @@ end
 -- Save player info to database (ตาราง users สไตล์ ESX คีย์ด้วย identifier)
 
 function HexaCore.SavePlayer(source)
-    -- เดิมอ่าน HexaCore.Players[source].PlayerData ตรง ๆ ก่อนเช็ค แล้วโยน
-    -- "attempt to index a nil value" ทุกครั้งที่ถูกเรียกด้วย source ที่ไม่มีตัวละคร
-    -- อยู่ในตาราง (เซฟที่ค้างคิวหลังผู้เล่นหลุด / resource อื่นเรียกด้วย id มั่ว)
-    -- ทำให้ else ข้างล่างที่เขียนไว้รับกรณีนี้กลายเป็นโค้ดตาย
+    -- ต้องเช็คก่อน index ไม่งั้นเซฟที่ค้างคิวหลังผู้เล่นหลุดจะโยน nil และ else ข้างล่างกลายเป็นโค้ดตาย
     local Player = HexaCore.Players[source]
     local PlayerData = Player and Player.PlayerData
     if PlayerData then
         local ped = GetPlayerPed(source)
-        -- ped อาจไม่มีอยู่จริงตอนคิวเซฟทำงาน (เพิ่งหลุด ยังไม่ spawn) แล้ว GetEntityCoords จะคืน 0,0,0
-        -- เขียนศูนย์ลงไปเท่ากับส่งตัวละครไปโผล่กลางทะเล จึงยอมใช้ตำแหน่งที่เก็บไว้เดิมแทน
+        -- ped อาจยังไม่มีตอนคิวเซฟทำงาน แล้ว GetEntityCoords คืน 0,0,0 = ส่งตัวละครไปโผล่กลางทะเล จึงใช้ตำแหน่งเดิมแทน
         local pcoords = DoesEntityExist(ped) and GetEntityCoords(ped) or nil
 
         -- ธงถูกปิดก่อนเขียน ไม่ใช่หลังเขียน เพราะการเขียนเป็นแบบไม่รอผล ถ้าปิดทีหลังจะไปลบธงที่เพิ่งถูกปักใหม่ระหว่างรอ
@@ -777,8 +680,7 @@ end
 
 -- Delete character
 
-local playertables = { -- เพิ่มตารางที่อ้างอิงตัวละครด้วย citizenid ได้ตามต้องการ
-    -- (ตารางที่ใส่ต้องมีอยู่จริงใน DB ไม่งั้น transaction ลบตัวละครจะ fail ทั้งชุด)
+local playertables = { -- เพิ่มตารางที่อ้างอิง citizenid ได้ แต่ต้องมีจริงใน DB ไม่งั้น transaction ลบตัวละคร fail ทั้งชุด
     { table = 'users'},
 }
 
@@ -859,11 +761,7 @@ end
 
 -- Util Functions
 
--- Citizen id system: Config.Player.CitizenIdPrefix followed by
--- Config.Player.CitizenIdDigits random digits, zero padded ('RB' + 4 -> RB0087).
--- Numbers listed in Config.Player.LockedIds are skipped and never handed out,
--- and every candidate is checked against the users table so no two characters
--- can end up sharing an id.
+-- citizen id = CitizenIdPrefix + สุ่ม CitizenIdDigits หลักเติมศูนย์ ข้าม LockedIds และเช็คไม่ให้ซ้ำกับตาราง users
 
 local CITIZEN_ID_TRIES = 50 -- draws per digit length before widening the pool
 local CITIZEN_ID_MAX_EXTRA_DIGITS = 4 -- how far the pool may widen when it is full
@@ -879,8 +777,7 @@ local function IsCitizenIdLocked(id)
     return lockedIdSet[id] == true
 end
 
---- how many digits the random part should have — clamped so the number always
---- stays inside Lua's integer range
+--- จำนวนหลักของเลขสุ่ม บีบไว้ไม่ให้หลุดช่วง integer ของ Lua
 local function CitizenIdDigits()
     local digits = math.floor(tonumber(HexaCore.Config.Player.CitizenIdDigits) or 4)
     if digits < 1 then return 1 end
@@ -888,8 +785,7 @@ local function CitizenIdDigits()
     return digits
 end
 
---- draw a free id with exactly `digits` random digits, or nil if every draw
---- landed on a locked or already taken number
+--- สุ่ม id ว่างที่มี digits หลักพอดี คืน nil ถ้าทุกครั้งชนเลขที่ล็อกไว้หรือถูกใช้แล้ว
 local function DrawCitizenId(prefix, digits)
     local pool = 1
     for _ = 1, digits do pool = pool * 10 end

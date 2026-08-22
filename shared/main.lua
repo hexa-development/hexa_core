@@ -1,8 +1,6 @@
 Shared = Shared or {}
 
--- อาชีพและไอเทมทั้งหมดโหลดจากฐานข้อมูล (สไตล์ ESX)
--- อาชีพ: ตาราง jobs + job_grades (server/jobs.lua) | ไอเทม: ตาราง items (server/items.lua)
--- server เติมข้อมูลตอนบูต แล้ว sync ให้ทุก client อัตโนมัติ
+-- ว่างตอนโหลดไฟล์เป็นเรื่องปกติ server อ่านอาชีพ/ไอเทมจาก DB ตอนบูตแล้ว sync ให้ client (docs guide/items-jobs)
 Shared.Jobs = {}
 Shared.Items = {}
 

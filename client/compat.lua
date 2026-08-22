@@ -1,6 +1,4 @@
--- ชั้นรองรับชื่อเก่า ฝั่ง client
--- โหลดท้ายสุดใน fxmanifest เพราะต้องเห็นฟังก์ชันจริงครบทุกตัวก่อนถึงจะผูก alias ได้
--- ทุกตัวที่นี่จะถูกถอดออกเมื่อกวาดแก้ resource ภายนอกครบแล้ว
+-- ชั้นรองรับชื่อเก่าฝั่ง client (ชั่วคราว) ต้องโหลดท้ายสุดใน fxmanifest เพราะต้องเห็นฟังก์ชันจริงครบก่อนถึงผูก alias ได้
 
 local RENAMED = {
     CreateClientCallback        = 'CreateCallback',
@@ -33,8 +31,7 @@ for oldName, newName in pairs(RENAMED) do
     end
 end
 
--- Debug เดิมทำคนละหน้าที่กันสองฝั่ง ฝั่งนี้รับ (resource, obj, depth) ฝั่ง server รับ (tbl, indent)
--- ตัวใหม่แยกเป็น PrintDebug (พิมพ์บรรทัด) กับ DumpTable (พิมพ์ตาราง) alias จึงต้องเดาให้ถูกจากชนิดของอาร์กิวเมนต์
+-- Debug เดิมคนละ signature สองฝั่ง alias จึงต้องเดาจากชนิดอาร์กิวเมนต์ว่าจะส่งไป PrintDebug หรือ DumpTable
 if rawget(Core, 'Debug') == nil then
     Core.Debug = function(first, second, ...)
         Hexa.WarnOnce('Debug', 'Core.Debug was split into Core.PrintDebug (one line) and Core.DumpTable (a table) - pick one')

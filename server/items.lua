@@ -1,13 +1,6 @@
--- ============================================================
--- โหลดไอเทมจากฐานข้อมูล (ตาราง items สไตล์ ESX)
--- ============================================================
--- ฐานข้อมูลเป็นแหล่งข้อมูลไอเทมเพียงแหล่งเดียว (Shared.Items เริ่มต้นว่าง)
--- install.sql จะสร้าง + seed ไอเทมเริ่มต้นให้อัตโนมัติตอนบูตครั้งแรก
--- แก้ไข/เพิ่มไอเทม: แก้ข้อมูลใน DB โดยตรง แล้ว restart hexa_core
+-- ตาราง items ใน DB คือแหล่งไอเทมแหล่งเดียว (Shared.Items เริ่มว่าง) แก้แล้วต้อง restart ดู docs guide/items-jobs
 
--- ไอเทมเงิน (ใช้เมื่อ Config.Money.EnableMoneyItems = true)
--- ต้องมีใน Shared.Items ไม่งั้น server/moneyitems.lua เรียก AddItem('dollar', ...)
--- แล้ว hexa_inventory ปฏิเสธเพราะหาไอเทมไม่เจอ (เงินสดจะหายทันทีที่ล็อกอิน)
+-- ไอเทมเงินต้องมีใน Shared.Items ไม่งั้น moneyitems.lua เรียก AddItem('dollar') ไม่ผ่าน แล้วเงินสดหายตอนล็อกอิน
 local MONEY_ITEMS = {
     dollar           = { label = 'Dollar',           weight = 0 },
     cent             = { label = 'Cent',             weight = 0 },
@@ -17,26 +10,11 @@ local MONEY_ITEMS = {
     blood_money_clip = { label = 'Blood Money Clip', weight = 0 },
 }
 
--- ============================================================
--- แคตตาล็อกไอเทมรวมศูนย์
--- ============================================================
--- Shared.Items คือแหล่งข้อมูล "ไอเทมทุกชนิด" ที่เดียวของทั้งเซิร์ฟเวอร์
--- รวม 3 แหล่งเข้าด้วยกัน:
---   1. ตาราง items ในฐานข้อมูล (โครง esx: ของกิน ของใช้ วัตถุดิบ)
---   2. Shared.Weapons (shared/weapons.lua)  -> ใส่ให้เป็น type = 'weapon'
---   3. ไอเทมเงิน (เมื่อเปิด EnableMoneyItems)
---
--- ข้อ 2 สำคัญมาก: ตาราง items เป็นโครง esx ซึ่ง *ไม่มีคอลัมน์ type* ทุกแถวจึงถูก
--- ใส่ type = 'item' เสมอ ผลคือเงื่อนไข `Shared.Items[name].type == 'weapon'` ที่มี
--- กระจายอยู่ทั่ว hexa_inventory (ตอนใช้ไอเทม, เทรด, สแตช, ดรอป, UI) เป็นเท็จตลอด
--- และอาวุธก็ไม่เคยมีแถวใน items ด้วย -> hexa_inventory มองไม่เห็นอาวุธเลย
--- รวมไว้ตรงนี้ทีเดียว โค้ดฝั่ง inventory จึงไม่ต้องมีทางหนีทีไล่ของตัวเอง
+-- ต้องรวมอาวุธเข้าที่นี่ เพราะตาราง items โครง esx ไม่มีคอลัมน์ type ทุกแถวจึงเป็น 'item' แล้ว hexa_inventory มองไม่เห็นอาวุธ
 local function buildCatalogue(rows)
     local items = {}
 
-    -- 1. ไอเทมจากฐานข้อมูล
-    -- ตาราง items เป็นโครง esx_core 100% (name, label, weight, rare, can_remove)
-    -- ฟิลด์ที่ ESX ไม่มีแต่ระบบภายใน/inventory ใช้ จะเติมเป็นค่า default ตรงนี้
+    -- 1. ไอเทมจากฐานข้อมูล: โครง esx_core 100% ฟิลด์ที่ ESX ไม่มีแต่ inventory ใช้ ต้องเติม default ตรงนี้
     for _, row in ipairs(rows or {}) do
         items[row.name] = {
             name = row.name,
@@ -53,9 +31,7 @@ local function buildCatalogue(rows)
         }
     end
 
-    -- 2. อาวุธ
-    -- แถวใน DB (ถ้ามี) ชนะเรื่อง label/weight แต่ type/unique ถูกบังคับเป็นอาวุธเสมอ
-    -- เพราะ DB ไม่มีทางบอกได้ว่าแถวไหนเป็นอาวุธ
+    -- 2. อาวุธ: แถวใน DB ชนะเรื่อง label/weight แต่ type/unique ต้องบังคับเสมอ เพราะ DB บอกไม่ได้ว่าแถวไหนเป็นอาวุธ
     for name, weapon in pairs(Shared.Weapons or {}) do
         local existing = items[name]
         items[name] = {
@@ -103,8 +79,7 @@ local function loadItemsFromDatabase()
         rows = nil
     end
     if not rows or #rows == 0 then
-        -- ไม่ return แล้ว: ต่อให้ตาราง items ว่าง อาวุธก็ยังต้องลงทะเบียนให้ครบ
-        -- ไม่งั้นผู้เล่นเสียอาวุธทั้งหมดตอนโหลด (LoadInventory ตัดของที่ไม่รู้จักทิ้ง)
+        -- ห้าม return: ตาราง items ว่างก็ยังต้องลงทะเบียนอาวุธให้ครบ ไม่งั้น LoadInventory ตัดอาวุธทิ้งทั้งกระเป๋า
         Hexa.Warn('the items table is empty - only weapons will be registered. check that install.sql seeded correctly')
         rows = {}
     end

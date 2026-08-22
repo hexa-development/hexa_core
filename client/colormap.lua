@@ -1,25 +1,9 @@
--- ============================================================
--- hexa_core — Colormap (ระบายสีอาณาเขตบนแผนที่)
--- ============================================================
--- ผูก hash ของโซน (state / district / region) เข้ากับ blip style
--- แล้วเกมจะวาดเส้นขอบ + สีพื้นให้เองทั้งบนมินิแมพและแผนที่ใหญ่
--- ตั้งค่าทั้งหมดอยู่ที่ Config.Colormap ใน config.lua
---
--- ไม่มี loop / ไม่มี thread — ทาสีครั้งเดียวตอน resource start แล้วจบ
--- สีที่ทาไว้ค้างอยู่กับ client จนกว่าจะถูกล้าง จึงต้องล้างคืนตอน resource stop
--- ไม่งั้น restart hexa_core แล้วสีเก่าจะค้างบนแผนที่ของคนที่อยู่ในเซิร์ฟ
---
--- ที่ดึงไปใช้:
---   exports['hexa_core']:SetZoneColor(zoneHash, color)  -- ทาสีโซนเดียว (ระหว่างเกม)
---   exports['hexa_core']:ResetZoneColor(zoneHash)       -- ล้างสีโซนเดียว
---   exports['hexa_core']:RefreshZoneColors()            -- ทาใหม่ทั้งหมดตาม Config
---   exports['hexa_core']:ClearZoneColors()              -- ล้างทุกโซนที่สคริปต์นี้ทาไว้
+-- Colormap — ทาสีโซนตาม Config.Colormap ตอน start และต้องล้างคืนตอน stop กันสีค้างบนแผนที่ผู้เล่น (docs api/exports)
 
 local APPLY_WANTED_REGION_STYLE  = 0x563FCB6620523917
 local REMOVE_WANTED_REGION_STYLE = 0x6786D7AFAC3162B3
 
---- โซนที่ทาสีค้างไว้อยู่ตอนนี้ — ใช้เป็นรายการล้างตอน stop/refresh
---- (คีย์ = hash ของโซน) เก็บเฉพาะโซนที่สคริปต์นี้ทาเอง จะได้ไม่ไปล้างของ resource อื่น
+--- รายการล้างตอน stop/refresh (คีย์ = hash โซน) เก็บเฉพาะโซนที่สคริปต์นี้ทาเอง จะได้ไม่ไปล้างของ resource อื่น
 local activeZones = {}
 
 local function colormapConfig()
@@ -46,8 +30,7 @@ local function resolveHash(value)
     return nil
 end
 
---- แปลงค่า color ในคอนฟิกให้เป็น hash ของ blip style
---- รับได้ทั้งชื่อสีจาก Config.Colormap.Colors ('red') และชื่อ style ตรงๆ ('BLIP_STYLE_...')
+--- แปลง color เป็น hash ของ blip style — รับได้ทั้งชื่อสีใน Config.Colormap.Colors ('red') และชื่อ style ตรงๆ
 local function resolveColor(color)
     local cfg = colormapConfig()
     local palette = cfg and cfg.Colors or nil
@@ -144,19 +127,12 @@ AddEventHandler('onResourceStop', function(resource)
     clearZoneColors()
 end)
 
--- ============================================================
--- debug commands (Config.Colormap.Debug = true)
--- ============================================================
--- English only on purpose: these are throwaway dev tools, the strings are
--- meant to be pasted straight into Config.Colormap.Zones.
+-- debug commands (Config.Colormap.Debug = true) — จงใจใช้อังกฤษ เพราะสตริงถูกก๊อปไปวางใน Config.Colormap.Zones ตรงๆ
 
 local GET_MAP_ZONE_AT_COORDS = 0x43AD8FC02B429D33
 
 if colormapConfig() and colormapConfig().Debug then
-    -- /zonehash — dump every map zone hash at the player's position.
-    -- Stand where you want to paint, run it, copy the hex into Config.Colormap.Zones.
-    -- Zone types are nested: the low ones are the small areas (region / district),
-    -- the high ones are the big containers (state). Types with no zone are skipped.
+    -- /zonehash — dump zone hashes at the player for Config.Colormap.Zones; low types = region/district, high = state.
     RegisterCommand('zonehash', function()
         local coords = GetEntityCoords(PlayerPedId())
         Hexa.Log('[colormap] zones at %.2f %.2f %.2f', coords.x, coords.y, coords.z)
@@ -175,11 +151,7 @@ if colormapConfig() and colormapConfig().Debug then
         end
     end, false)
 
-    -- /zonestyle <zone> <style> — paint one zone right now, without a restart.
-    --   zone  = 0x3B8DD21A, or a zone name such as state_lemoyne
-    --   style = a palette name from Config.Colormap.Colors ('red'), or a raw
-    --           BLIP_STYLE_* name to preview a shade that is not in the palette
-    -- The paint is client-side and lives until restart, so it is safe to spam.
+    -- /zonestyle <hash|state_lemoyne> <palette color|BLIP_STYLE_*> — paint one zone now, client-side only, safe to spam.
     RegisterCommand('zonestyle', function(_, args)
         local zone, style = args[1], args[2]
         if not zone or not style then
@@ -192,8 +164,7 @@ if colormapConfig() and colormapConfig().Debug then
         end
     end, false)
 
-    -- /zonereset [zone] — clear one zone, or with no argument repaint everything
-    -- from Config.Colormap.Zones (undoes whatever /zonestyle left behind).
+    -- /zonereset [zone] — clear one zone, or with no argument repaint everything from Config.Colormap.Zones.
     RegisterCommand('zonereset', function(_, args)
         local zone = args[1]
         if zone then
@@ -205,9 +176,7 @@ if colormapConfig() and colormapConfig().Debug then
     end, false)
 end
 
--- ============================================================
 -- exports
--- ============================================================
 
 exports('SetZoneColor', setZoneColor)
 exports('ResetZoneColor', resetZoneColor)

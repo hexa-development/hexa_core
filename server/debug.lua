@@ -1,8 +1,6 @@
 -- ตัวพิมพ์จริงย้ายไปอยู่ shared/log.lua หมดแล้ว ไฟล์นี้เหลือแค่ปลายทางของ log ที่ resource อื่นยิงเข้ามา
 
--- ทั้งเซิร์ฟยิง hexa_log:server:CreateLog อยู่ 23 จุดใน 4 resource แต่ไม่เคยมี resource ชื่อ hexa_log อยู่จริง
--- และไม่มีใครลงทะเบียนรับ event นี้เลย log ทั้งหมดจึงหายเงียบ ทั้งคนเข้าออก ลบตัวละคร และแจ้งเตือน anticheat
--- รับเองตรงนี้เพื่อให้ 23 จุดเดิมเห็นผลทันทีโดยไม่ต้องแก้อะไร และส่งต่อ webhook ได้ถ้าตั้งค่าไว้
+-- ไม่เคยมี resource ชื่อ hexa_log อยู่จริง log ทั้งเซิร์ฟเลยหายเงียบ จึงรับ hexa_log:server:CreateLog เองที่นี่ ดู docs guide/logging
 local LOG_COLOURS = {
     red = '^1', green = '^2', yellow = '^3', blue = '^4', white = '^7', default = '^7',
 }
@@ -42,8 +40,7 @@ AddEventHandler('hexa_log:server:CreateLog', function(category, title, colour, m
     postToDiscord(category, title, message)
 end)
 
--- เดิมมี HexaCore:DebugSomething เป็นทางอ้อมให้ Debug เรียกผ่าน ตอนนี้ Core.DumpTable พิมพ์ตรงได้เลย
--- คงตัวรับไว้เพราะยังมีโค้ดเก่ายิงเข้ามา และคงกันไม่ให้เป็น net event เหมือนเดิมเพื่อไม่ให้ client ยิงถล่มคอนโซล
+-- คงไว้ให้โค้ดเก่ายิงเข้ามาได้ แต่ห้ามทำเป็น net event เด็ดขาด ไม่งั้น client ยิงถล่มคอนโซลได้
 AddEventHandler('HexaCore:DebugSomething', function(tbl, indent, resource)
     Hexa.Log('^6[DUMP]^7 %s', tostring(resource or GetInvokingResource() or 'unknown resource'))
     Core.DumpTable(tbl, indent)
