@@ -98,6 +98,94 @@ CreateThread(function()
 end)
 
 -- ============================================================
+-- แกนทอง (cores) + หลอดสเตมินา
+-- ============================================================
+-- RDR2 แยกค่าเป็นสองชั้น: "แกนทอง" (วงในที่ไหลลงเองตามเวลา) กับ "หลอดนอก" (ค่าจริงที่ใช้วิ่ง/ยิง)
+-- แกนทองไหลลงเมื่อไหร่ หลอดนอกก็เติมกลับได้ไม่เต็มอีกต่อไป — และค่าพวกนี้ผูกกับ "ตัว ped"
+-- ไม่ใช่ตัวผู้เล่น ped ตัวใหม่ (เกิดใหม่ · เปลี่ยนโมเดลตอนสร้างตัวละคร/เปลี่ยนชุด) จึงไม่ได้
+-- สืบค่าเดิมมาเลย ผลคือเพิ่งเข้าเกมก็ได้สเตมินามาไม่เต็มหลอดทั้งที่ยังไม่ได้วิ่ง
+--
+-- เซิร์ฟนี้นับหิว/กระหายเองอยู่แล้ว (ด้านบน) แกนของเกมจึงถูกกดเต็มค้างไว้แทน
+-- ส่วนหลอดนอกเติมให้เฉพาะตอน ped เปลี่ยนตัวเท่านั้น ไม่งั้นวิ่งเท่าไหร่ก็ไม่มีวันเหนื่อย
+
+--- coreIndex ของ _SET_ATTRIBUTE_CORE_VALUE: 0 = สุขภาพ, 1 = สเตมินา, 2 = เดดอาย
+local Cores = {
+    { key = 'health',  index = 0 },
+    { key = 'stamina', index = 1 },
+    { key = 'deadeye', index = 2 },
+}
+
+local function coresConfig()
+    local cfg = statusConfig()
+    return cfg and cfg.Cores or nil
+end
+
+local function getCoreValue(ped, index)
+    -- _GET_ATTRIBUTE_CORE_VALUE(ped, coreIndex) -> 0-100
+    return tonumber(Citizen.InvokeNative(0x36731AC041289BB1, ped, index, Citizen.ResultAsInteger())) or 0
+end
+
+--- เติมแกนให้ถึงค่าที่ตั้งไว้ + (ถ้าสั่ง) เติมหลอดสเตมินาด้านนอกจนเต็ม
+--- เขียนเฉพาะแกนที่ยังไม่ถึงค่าเป้าหมาย — เขียนทับทุกรอบไอคอนแกนจะกะพริบให้เห็นทุก 5 วิ
+local function refillCores(fullStamina)
+    local cfg = coresConfig()
+    if not cfg or not cfg.enabled then return end
+
+    local ped = PlayerPedId()
+    if not DoesEntityExist(ped) or IsEntityDead(ped) then return end
+
+    for _, core in ipairs(Cores) do
+        local target = tonumber(cfg[core.key])
+        if target then
+            target = math.floor(clamp(target))
+            if getCoreValue(ped, core.index) < target then
+                -- _SET_ATTRIBUTE_CORE_VALUE(ped, coreIndex, value)
+                Citizen.InvokeNative(0xC6258F41D86676E0, ped, core.index, target)
+            end
+        end
+    end
+
+    if fullStamina then
+        local target = tonumber(cfg.staminaOnSpawn)
+        if target then
+            -- _RESTORE_PED_STAMINA(ped, 0.0-100.0)
+            Citizen.InvokeNative(0x675680D089BFA21F, ped, clamp(target) + 0.0)
+        end
+    end
+end
+
+-- ped เปลี่ยนตัวเมื่อไหร่ = ถือว่าเพิ่งเกิด/เพิ่งเปลี่ยนโมเดล ให้เติมหลอดนอกให้ด้วยหนึ่งครั้ง
+-- (ดักด้วยการเทียบ handle ถูกกว่าการไปไล่ดักทุกเหตุการณ์ที่สร้าง ped ใหม่)
+-- ฟื้นจากตายนับด้วย: หมอชุบ/แอดมิน revive ได้ ped ตัวเดิมกลับมาแต่หลอดสเตมินาว่างเปล่า
+CreateThread(function()
+    local lastPed = 0
+    local wasDead = false
+
+    while true do
+        local cfg = coresConfig()
+        local interval = cfg and tonumber(cfg.interval) or 5000
+        if interval < 1000 then interval = 1000 end
+
+        Wait(interval)
+
+        if LocalPlayer.state.isLoggedIn then
+            local ped = PlayerPedId()
+            local dead = IsEntityDead(ped)
+            local reborn = ped ~= lastPed or (wasDead and not dead)
+
+            lastPed = ped
+            wasDead = dead
+
+            refillCores(reborn)
+        end
+    end
+end)
+
+AddEventHandler('HexaCore:Client:OnPlayerLoaded', function()
+    refillCores(true)
+end)
+
+-- ============================================================
 -- exports
 -- ============================================================
 
@@ -109,4 +197,11 @@ exports('GetStatus', function(key)
         cleanliness = status.cleanliness,
         stress      = status.stress,
     }
+end)
+
+--- เติมแกน (และหลอดสเตมินา) ให้เต็มเดี๋ยวนี้ — สคริปต์อื่นเรียกได้หลังชุบ/หลังเปลี่ยนโมเดล
+--- exports['hexa_core']:RefillCores()      -- เติมแกน + หลอดสเตมินา
+--- exports['hexa_core']:RefillCores(false) -- เติมเฉพาะแกน ไม่ยุ่งกับหลอดสเตมินา
+exports('RefillCores', function(fullStamina)
+    refillCores(fullStamina ~= false)
 end)

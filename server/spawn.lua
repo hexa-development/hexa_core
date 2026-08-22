@@ -1,4 +1,4 @@
--- ============================================================
+﻿-- ============================================================
 -- ระบบ login + spawn อัตโนมัติ (ไม่มีหน้าจอเลือกตัวละคร/จุดเกิด)
 -- ============================================================
 -- client โหลดเสร็จจะยิง HexaCore:Server:RequestSpawn เข้ามา แล้วฝั่งนี้จะ:
@@ -31,7 +31,7 @@ RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
     -- รอ installer สร้างตาราง players ให้เสร็จก่อน (กันแข่งกันตอน DB ใหม่)
     if AwaitSchemaReady then AwaitSchemaReady(15000) end
 
-    local license = HexaCore.Functions.GetIdentifier(src)
+    local license = HexaCore.GetIdentifier(src)
     if not license then
         spawning[src] = nil
         return DropPlayer(src, Lang:t('error.no_valid_license'))
@@ -43,7 +43,7 @@ RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
         -- หาตัวละครของ license นี้ (ตาราง users สไตล์ ESX: identifier = license)
         local citizenid = MySQL.scalar.await('SELECT citizenid FROM users WHERE identifier = ? ORDER BY last_seen DESC LIMIT 1', { license })
         -- citizenid = nil ได้ -> Login จะสร้างตัวละครใหม่จาก PlayerDefaults ให้เอง
-        HexaCore.Player.Login(src, citizenid)
+        HexaCore.LoginPlayer(src, citizenid)
     end)
     spawning[src] = nil
 
@@ -64,11 +64,5 @@ AddEventHandler('playerDropped', function()
     spawning[source] = nil
 end)
 
--- เซฟผู้เล่นทุกคนก่อน resource หยุด/รีสตาร์ท
--- เพื่อให้ตำแหน่งและข้อมูลล่าสุดลง DB แล้วตอน client กลับมา login ใหม่จะได้ข้อมูลตรง
-AddEventHandler('onResourceStop', function(res)
-    if res ~= GetCurrentResourceName() then return end
-    for src in pairs(HexaCore.Players) do
-        HexaCore.Player.Save(src)
-    end
-end)
+-- การเซฟตอน resource หยุดย้ายไปอยู่ server/save.lua แล้ว เพราะของเดิมเรียก SavePlayer ตรง ๆ
+-- ซึ่งข้าม PullStateBags ทำให้ค่าหิว กระหาย สะอาด เครียด ที่ค้างใน statebag หายทุกครั้งที่รีสตาร์ท

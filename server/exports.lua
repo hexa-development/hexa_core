@@ -1,4 +1,4 @@
--- Add or change (a) method(s) in the HexaCore.Functions table
+﻿-- Add or change (a) method(s) in the HexaCore.Functions table
 local function SetMethod(methodName, handler)
     if type(methodName) ~= 'string' then
         return false, 'invalid_method_name'
@@ -11,7 +11,7 @@ local function SetMethod(methodName, handler)
     return true, 'success'
 end
 
-HexaCore.Functions.SetMethod = SetMethod
+HexaCore.SetField = SetMethod
 exports('SetMethod', SetMethod)
 
 -- Add or change (a) field(s) in the HexaCore table
@@ -27,7 +27,7 @@ local function SetField(fieldName, data)
     return true, 'success'
 end
 
-HexaCore.Functions.SetField = SetField
+HexaCore.SetField = SetField
 exports('SetField', SetField)
 
 -- Single add job function which should only be used if you planning on adding a single job
@@ -47,7 +47,7 @@ local function AddJob(jobName, job)
     return true, 'success'
 end
 
-HexaCore.Functions.AddJob = AddJob
+HexaCore.RegisterJob = AddJob
 exports('AddJob', AddJob)
 
 -- Multiple Add Jobs
@@ -80,7 +80,7 @@ local function AddJobs(jobs)
     return true, message, nil
 end
 
-HexaCore.Functions.AddJobs = AddJobs
+HexaCore.RegisterJobs = AddJobs
 exports('AddJobs', AddJobs)
 
 -- Single Remove Job
@@ -100,7 +100,7 @@ local function RemoveJob(jobName)
     return true, 'success'
 end
 
-HexaCore.Functions.RemoveJob = RemoveJob
+HexaCore.UnregisterJob = RemoveJob
 exports('RemoveJob', RemoveJob)
 
 -- Single Update Job
@@ -120,7 +120,7 @@ local function UpdateJob(jobName, job)
     return true, 'success'
 end
 
-HexaCore.Functions.UpdateJob = UpdateJob
+HexaCore.UpdateJobDefinition = UpdateJob
 exports('UpdateJob', UpdateJob)
 
 -- Single add item
@@ -140,7 +140,7 @@ local function AddItem(itemName, item)
     return true, 'success'
 end
 
-HexaCore.Functions.AddItem = AddItem
+HexaCore.RegisterItem = AddItem
 exports('AddItem', AddItem)
 
 -- Single update item
@@ -157,7 +157,7 @@ local function UpdateItem(itemName, item)
     return true, 'success'
 end
 
-HexaCore.Functions.UpdateItem = UpdateItem
+HexaCore.UpdateItemDefinition = UpdateItem
 exports('UpdateItem', UpdateItem)
 
 -- Multiple Add Items
@@ -190,7 +190,7 @@ local function AddItems(items)
     return true, message, nil
 end
 
-HexaCore.Functions.AddItems = AddItems
+HexaCore.RegisterItems = AddItems
 exports('AddItems', AddItems)
 
 -- Single Remove Item
@@ -210,7 +210,7 @@ local function RemoveItem(itemName)
     return true, 'success'
 end
 
-HexaCore.Functions.RemoveItem = RemoveItem
+HexaCore.UnregisterItem = RemoveItem
 exports('RemoveItem', RemoveItem)
 
 local resourceName = GetCurrentResourceName()
@@ -222,7 +222,7 @@ local function GetCoreVersion(InvokingResource)
     return resourceVersion
 end
 
-HexaCore.Functions.GetCoreVersion = GetCoreVersion
+HexaCore.GetCoreVersion = GetCoreVersion
 exports('GetCoreVersion', GetCoreVersion)
 
 local function ExploitBan(playerId, origin)

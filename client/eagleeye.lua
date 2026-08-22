@@ -1,4 +1,4 @@
-local HexaCore = exports['hexa_core']:GetCoreObject()
+﻿local HexaCore = exports['hexa_core']:GetCoreObject()
 
 -- เปิด/ปิดความสามารถ Eagle Eye (Dead Eye ของสัตว์ - มองเห็นรอยเท้า/กลิ่น)
 local function EnableEagleEye(enable)
@@ -15,7 +15,7 @@ local function ShouldEnableEagleEye(job)
 end
 
 local function HandleEagleEyeAccess()
-    local playerData = HexaCore.Functions.GetPlayerData()
+    local playerData = HexaCore.GetPlayerData()
     local playerJob = playerData and playerData.job and playerData.job.name
     EnableEagleEye(ShouldEnableEagleEye(playerJob))
 end

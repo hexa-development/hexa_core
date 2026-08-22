@@ -1,4 +1,4 @@
--- Built-in notification
+﻿-- Built-in notification
 -- ปลายทางจริงคือ hexa_notify (toast NUI) ถ้ามัน started ก็ส่งต่อไปให้มันวาด
 -- ห้ามให้ hexa_notify มา RegisterNetEvent('HexaCore:Notify') เองเด็ดขาด —
 -- event นี้มี handler อยู่ตรงนี้แล้ว ถ้าไปฟังซ้ำจะได้แจ้งเตือนสองครั้งทุกครั้ง
@@ -52,8 +52,9 @@ end
 -- ตั้ง 0.0 = ไม่ฟื้นเลย / 1.0 = ฟื้นตามเกมเดิม (ที่นี่ที่เดียว ไม่มีใน config)
 local function DisableHealthRecharge()
     local ped = PlayerPedId()
-    Citizen.InvokeNative(0x8899C244EBCF70DE, ped, 0.0) -- SetPlayerHealthRechargeMultiplier
-    Citizen.InvokeNative(0xDE1B1907A83A1550, ped, 0.0) -- SetHealthRechargeMultiplier
+    -- ตัวแรกรับ "player index" ไม่ใช่ ped — ส่ง ped เข้าไปเท่ากับสั่งคนละคน (ไม่ได้ปิดอะไรเลย)
+    Citizen.InvokeNative(0x8899C244EBCF70DE, PlayerId(), 0.0) -- SET_PLAYER_HEALTH_RECHARGE_MULTIPLIER(player, float)
+    Citizen.InvokeNative(0xDE1B1907A83A1550, ped, 0.0)        -- _SET_HEALTH_RECHARGE_MULTIPLIER(ped, int)
 end
 
 -- ค่านี้ผูกกับตัว ped ไม่ใช่ตัวผู้เล่น เกมจึงรีเซ็ตกลับเป็นค่าเริ่มต้นทุกครั้งที่
@@ -182,15 +183,16 @@ end)
 
 -- This event is exploitable and should not be used. It has been deprecated, and will be removed soon.
 RegisterNetEvent('HexaCore:Client:UseItem', function(item)
-    HexaCore.Debug(string.format('%s triggered HexaCore:Client:UseItem by ID %s with the following data. This event is deprecated due to exploitation, and will be removed soon. Check qb-inventory for the right use on this event.', GetInvokingResource(), GetPlayerServerId(PlayerId())))
-    HexaCore.Debug(item)
+    Core.Warn('%s triggered the deprecated HexaCore:Client:UseItem for id %s - this event is exploitable and goes away next release, use hexa_inventory instead',
+        tostring(GetInvokingResource()), GetPlayerServerId(PlayerId()))
+    Core.DumpTable(item)
 end)
 
 -- Callback Events --
 
 -- Client Callback
 RegisterNetEvent('HexaCore:Client:TriggerClientCallback', function(name, ...)
-    HexaCore.Functions.TriggerClientCallback(name, function(...)
+    HexaCore.TriggerClientCallback(name, function(...)
         TriggerServerEvent('HexaCore:Server:TriggerClientCallback', name, ...)
     end, ...)
 end)

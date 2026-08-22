@@ -1,4 +1,5 @@
-HexaCore.Functions = {}
+﻿-- ตาราง Functions ถูกสร้างพร้อม metatable มิเรอร์ไว้แล้วใน main.lua
+-- ประกาศซ้ำตรงนี้เท่ากับล้าง mirror ทิ้ง แล้ว bridge ที่ยกฟังก์ชันด้วย pairs() จะได้ศูนย์ตัว
 HexaCore.Player_Buckets = {}
 HexaCore.Entity_Buckets = {}
 HexaCore.UsableItems = {}
@@ -6,7 +7,7 @@ HexaCore.UsableItems = {}
 -- Built-in notification (replaces rb_notify)
 ---@param source number player server id
 ---@param data table { title, description, type, duration }
-function HexaCore.Functions.Notify(source, data)
+function HexaCore.Notify(source, data)
     -- source ต้องเป็นผู้เล่นจริง (server id > 0) - ถ้ามาจาก console (0) หรือ nil
     -- จะ TriggerClientEvent ไม่ได้ (crash "Argument at index 1 was null") -> print แทน
     local src = tonumber(source)
@@ -23,13 +24,13 @@ end
 
 -- Getters
 -- Get your player first and then trigger a function on them
--- ex: local player = HexaCore.Functions.GetPlayer(source)
--- ex: local example = player.Functions.functionname(parameter)
+-- ex: local player = HexaCore.GetPlayer(source)
+-- ex: local example = player.functionname(parameter)
 
 ---Gets the coordinates of an entity
 ---@param entity number
 ---@return vector4
-function HexaCore.Functions.GetCoords(entity)
+function HexaCore.GetCoords(entity)
     local coords = GetEntityCoords(entity, false)
     local heading = GetEntityHeading(entity)
     return vector4(coords.x, coords.y, coords.z, heading)
@@ -40,14 +41,14 @@ end
 ---@param source any
 ---@param idtype string
 ---@return string?
-function HexaCore.Functions.GetIdentifier(source, idtype)
+function HexaCore.GetIdentifier(source, idtype)
     return GetPlayerIdentifierByType(source, idtype or HexaCore.Config.IdentifierType or 'license')
 end
 
 ---Gets a players server id (source). Returns 0 if no player is found.
 ---@param identifier string
 ---@return number
-function HexaCore.Functions.GetSource(identifier)
+function HexaCore.GetSourceByIdentifier(identifier)
     for src, _ in pairs(HexaCore.Players) do
         local idens = GetPlayerIdentifiers(src)
         for _, id in pairs(idens) do
@@ -62,18 +63,18 @@ end
 ---Get player with given server id (source)
 ---@param source any
 ---@return table
-function HexaCore.Functions.GetPlayer(source)
+function HexaCore.GetPlayer(source)
     if type(source) == 'number' then
         return HexaCore.Players[source]
     else
-        return HexaCore.Players[HexaCore.Functions.GetSource(source)]
+        return HexaCore.Players[HexaCore.GetSourceByIdentifier(source)]
     end
 end
 
 ---Get player by citizen id
 ---@param citizenid string
 ---@return table?
-function HexaCore.Functions.GetPlayerByCitizenId(citizenid)
+function HexaCore.GetPlayerByCitizenId(citizenid)
     for src in pairs(HexaCore.Players) do
         if HexaCore.Players[src].PlayerData.citizenid == citizenid then
             return HexaCore.Players[src]
@@ -82,24 +83,13 @@ function HexaCore.Functions.GetPlayerByCitizenId(citizenid)
     return nil
 end
 
----Get offline player by citizen id
----@param citizenid string
----@return table?
-function HexaCore.Functions.GetOfflinePlayerByCitizenId(citizenid)
-    return HexaCore.Player.GetOfflinePlayer(citizenid)
-end
-
----Get player by license
----@param license string
----@return table?
-function HexaCore.Functions.GetPlayerByLicense(license)
-    return HexaCore.Player.GetPlayerByLicense(license)
-end
+-- GetOfflinePlayerByCitizenId / GetPlayerByLicense เคยเป็นตัวส่งต่อซ้อนอยู่ตรงนี้
+-- พอแบนชั้น .Functions ทิ้ง ชื่อมันไปตรงกับตัวจริงใน server/player.lua จนกลายเป็นเรียกตัวเอง จึงลบทิ้ง
 
 ---Get player by account id
 ---@param account string
 ---@return table?
-function HexaCore.Functions.GetPlayerByAccount(account)
+function HexaCore.GetPlayerByAccount(account)
     for src in pairs(HexaCore.Players) do
         if HexaCore.Players[src].PlayerData.charinfo.account == account then
             return HexaCore.Players[src]
@@ -112,7 +102,7 @@ end
 ---@param property string
 ---@param value string
 ---@return table?
-function HexaCore.Functions.GetPlayerByCharInfo(property, value)
+function HexaCore.GetPlayerByCharInfo(property, value)
     for src in pairs(HexaCore.Players) do
         local charinfo = HexaCore.Players[src].PlayerData.charinfo
         if charinfo[property] ~= nil and charinfo[property] == value then
@@ -124,7 +114,7 @@ end
 
 ---Get all players. Returns the server ids of all players.
 ---@return table
-function HexaCore.Functions.GetPlayers()
+function HexaCore.GetPlayers()
     local sources = {}
     for k in pairs(HexaCore.Players) do
         sources[#sources + 1] = k
@@ -135,14 +125,14 @@ end
 ---Will return an array of Hexa Player class instances
 ---unlike the GetPlayers() wrapper which only returns IDs
 ---@return table
-function HexaCore.Functions.GetHexaPlayers()
+function HexaCore.GetPlayerObjects()
     return HexaCore.Players
 end
 
 ---Gets a list of all on duty players of a specified job and the number
 ---@param job string
 ---@return table, number
-function HexaCore.Functions.GetPlayersOnDuty(job)
+function HexaCore.GetPlayersOnDuty(job)
     local players = {}
     local count = 0
     for src, Player in pairs(HexaCore.Players) do
@@ -159,7 +149,7 @@ end
 ---Returns only the amount of players on duty for the specified job
 ---@param job string
 ---@return number
-function HexaCore.Functions.GetDutyCount(job)
+function HexaCore.GetDutyCount(job)
     local count = 0
     for _, Player in pairs(HexaCore.Players) do
         if Player.PlayerData.job.name == job then
@@ -175,7 +165,7 @@ end
 --- @param coords vector The coordinates to calculate the distance from. Can be a table with x, y, z fields or a vector3. If not provided, the source player's Ped's coordinates are used.
 --- @return string closestPlayer - The Player that is closest to the source player (or the provided coordinates). Returns -1 if no Players are found.
 --- @return number closestDistance - The distance to the closest Player. Returns -1 if no Players are found.
-function HexaCore.Functions.GetClosestPlayer(source, coords)
+function HexaCore.GetClosestPlayer(source, coords)
     local ped = GetPlayerPed(source)
     local players = GetPlayers()
     local closestDistance, closestPlayer = -1, -1
@@ -200,7 +190,7 @@ end
 --- @param coords vector The coordinates to calculate the distance from. Can be a table with x, y, z fields or a vector3. If not provided, the source player's Ped's coordinates are used.
 --- @return number closestObject - The Object that is closest to the source player (or the provided coordinates). Returns -1 if no Objects are found.
 --- @return number closestDistance - The distance to the closest Object. Returns -1 if no Objects are found.
-function HexaCore.Functions.GetClosestObject(source, coords)
+function HexaCore.GetClosestObject(source, coords)
     local ped = GetPlayerPed(source)
     local objects = GetAllObjects()
     local closestDistance, closestObject = -1, -1
@@ -221,7 +211,7 @@ end
 --- @param coords vector The coordinates to calculate the distance from. Can be a table with x, y, z fields or a vector3. If not provided, the source player's Ped's coordinates are used.
 --- @return number closestVehicle - The Vehicle that is closest to the source player (or the provided coordinates). Returns -1 if no Vehicles are found.
 --- @return number closestDistance - The distance to the closest Vehicle. Returns -1 if no Vehicles are found.
-function HexaCore.Functions.GetClosestVehicle(source, coords)
+function HexaCore.GetClosestVehicle(source, coords)
     local ped = GetPlayerPed(source)
     local vehicles = GetAllVehicles()
     local closestDistance, closestVehicle = -1, -1
@@ -242,7 +232,7 @@ end
 --- @param coords vector The coordinates to calculate the distance from. Can be a table with x, y, z fields or a vector3. If not provided, the source player's Ped's coordinates are used.
 --- @return number closestPed - The Ped that is closest to the source player (or the provided coordinates). Returns -1 if no Peds are found.
 --- @return number closestDistance - The distance to the closest Ped. Returns -1 if no Peds are found.
-function HexaCore.Functions.GetClosestPed(source, coords)
+function HexaCore.GetClosestPed(source, coords)
     local ped = GetPlayerPed(source)
     local peds = GetAllPeds()
     local closestDistance, closestPed = -1, -1
@@ -265,7 +255,7 @@ end
 
 ---Returns the objects related to buckets, first returned value is the player buckets, second one is entity buckets
 ---@return table, table
-function HexaCore.Functions.GetBucketObjects()
+function HexaCore.GetBucketObjects()
     return HexaCore.Player_Buckets, HexaCore.Entity_Buckets
 end
 
@@ -273,9 +263,9 @@ end
 ---@param source any
 ---@param bucket any
 ---@return boolean
-function HexaCore.Functions.SetPlayerBucket(source, bucket)
+function HexaCore.SetPlayerBucket(source, bucket)
     if source and bucket then
-        local plicense = HexaCore.Functions.GetIdentifier(source)
+        local plicense = HexaCore.GetIdentifier(source)
         Player(source).state:set('instance', bucket, true)
         SetPlayerRoutingBucket(source, bucket)
         HexaCore.Player_Buckets[plicense] = { id = source, bucket = bucket }
@@ -289,7 +279,7 @@ end
 ---@param entity number
 ---@param bucket number
 ---@return boolean
-function HexaCore.Functions.SetEntityBucket(entity, bucket)
+function HexaCore.SetEntityBucket(entity, bucket)
     if entity and bucket then
         SetEntityRoutingBucket(entity, bucket)
         HexaCore.Entity_Buckets[entity] = { id = entity, bucket = bucket }
@@ -302,7 +292,7 @@ end
 ---Will return an array of all the player ids inside the current bucket
 ---@param bucket number
 ---@return table|boolean
-function HexaCore.Functions.GetPlayersInBucket(bucket)
+function HexaCore.GetPlayersInBucket(bucket)
     local curr_bucket_pool = {}
     if HexaCore.Player_Buckets and next(HexaCore.Player_Buckets) then
         for _, v in pairs(HexaCore.Player_Buckets) do
@@ -320,7 +310,7 @@ end
 ---(not for player entities, use GetPlayersInBucket for that)
 ---@param bucket number
 ---@return table|boolean
-function HexaCore.Functions.GetEntitiesInBucket(bucket)
+function HexaCore.GetEntitiesInBucket(bucket)
     local curr_bucket_pool = {}
     if HexaCore.Entity_Buckets and next(HexaCore.Entity_Buckets) then
         for _, v in pairs(HexaCore.Entity_Buckets) do
@@ -349,7 +339,7 @@ end
 local SPAWN_TIMEOUT_MS = 10000
 local SPAWN_POLL_MS = 50
 
-function HexaCore.Functions.SpawnVehicle(source, model, coords, warp)
+function HexaCore.SpawnVehicle(source, model, coords, warp)
     local ped = GetPlayerPed(source)
     model = type(model) == 'string' and joaat(model) or model
     if not coords then coords = GetEntityCoords(ped) end
@@ -402,7 +392,7 @@ end
 ---@param coords vector
 ---@param warp boolean
 ---@return number
-function HexaCore.Functions.CreateVehicle(source, model, vehtype, coords, warp)
+function HexaCore.CreateVehicle(source, model, vehtype, coords, warp)
     model = type(model) == 'string' and joaat(model) or model
     vehtype = type(vehtype) == 'string' and tostring(vehtype) or vehtype
     if not coords then coords = GetEntityCoords(GetPlayerPed(source)) end
@@ -513,13 +503,13 @@ function PaycheckInterval()
 
                     if society and society ~= 0 and society < payment then
                         -- บริษัทมีบัญชีแต่เงินไม่พอ -> ไม่จ่าย
-                        HexaCore.Functions.Notify(Player.PlayerData.source, {title = Lang:t('error.company_too_poor'), type = 'error', duration = 5000 })
+                        HexaCore.Notify(Player.PlayerData.source, {title = Lang:t('error.company_too_poor'), type = 'error', duration = 5000 })
                     else
-                        if Player.Functions.AddMoney(account, payment, 'paycheck') then
+                        if Player.AddMoney(account, payment, 'paycheck') then
                             if society and society ~= 0 then
                                 societyRemoveMoney(job.name, payment)
                             end
-                            HexaCore.Functions.Notify(Player.PlayerData.source, {title = Lang:t('info.received_paycheck', { value = payment }), type = 'info', duration = 5000 })
+                            HexaCore.Notify(Player.PlayerData.source, {title = Lang:t('info.received_paycheck', { value = payment }), type = 'info', duration = 5000 })
                         end
                     end
                 end
@@ -536,7 +526,7 @@ end
 ---@param source any
 ---@param cb function
 ---@param ... any
-function HexaCore.Functions.TriggerClientCallback(name, source, cb, ...)
+function HexaCore.TriggerClientCallback(name, source, cb, ...)
     HexaCore.ClientCallbacks[name] = cb
     TriggerClientEvent('HexaCore:Client:TriggerClientCallback', source, name, ...)
 end
@@ -544,7 +534,7 @@ end
 ---Create Server Callback
 ---@param name string
 ---@param cb function
-function HexaCore.Functions.CreateCallback(name, cb)
+function HexaCore.CreateCallback(name, cb)
     HexaCore.ServerCallbacks[name] = cb
 end
 
@@ -553,7 +543,7 @@ end
 ---@param source any
 ---@param cb function
 ---@param ... any
-function HexaCore.Functions.TriggerCallback(name, source, cb, ...)
+function HexaCore.TriggerCallback(name, source, cb, ...)
     if not HexaCore.ServerCallbacks[name] then return end
     HexaCore.ServerCallbacks[name](source, cb, ...)
 end
@@ -563,21 +553,21 @@ end
 ---Create a usable item
 ---@param item string
 ---@param data function
-function HexaCore.Functions.CreateUseableItem(item, data)
+function HexaCore.CreateUseableItem(item, data)
     HexaCore.UsableItems[item] = data
 end
 
 ---Checks if the given item is usable
 ---@param item string
 ---@return any
-function HexaCore.Functions.CanUseItem(item)
+function HexaCore.GetUsableItem(item)
     return HexaCore.UsableItems[item]
 end
 
 ---Use item
 ---@param source any
 ---@param item string
-function HexaCore.Functions.UseItem(source, item)
+function HexaCore.UseItem(source, item)
     -- เดิมเช็ค == 'missing' ซึ่งผ่านตอน resource อยู่ในสถานะ 'stopped' /
     -- 'starting' / 'uninitialized' ด้วย แล้วการเรียก export จะ error
     -- ("attempt to index a nil value") ต้องเช็คว่า started จริงเท่านั้น
@@ -593,7 +583,7 @@ end
 ---@param reason string
 ---@param setKickReason boolean
 ---@param deferrals boolean
-function HexaCore.Functions.Kick(source, reason, setKickReason, deferrals)
+function HexaCore.Kick(source, reason, setKickReason, deferrals)
     reason = '\n' .. reason
     if setKickReason then
         setKickReason(reason)
@@ -633,7 +623,7 @@ end
 ---Add permission for player
 ---@param source any
 ---@param permission string
-function HexaCore.Functions.AddPermission(source, permission)
+function HexaCore.AddPermission(source, permission)
     if not IsPlayerAceAllowed(source, permission) then
         ExecuteCommand(('add_principal player.%s hexacore.%s'):format(source, permission))
         HexaCore.Commands.Refresh(source)
@@ -644,7 +634,7 @@ end
 ---Remove permission from player
 ---@param source any
 ---@param permission string
-function HexaCore.Functions.RemovePermission(source, permission)
+function HexaCore.RemovePermission(source, permission)
     local changed = false
     if permission then
         if IsPlayerAceAllowed(source, permission) then
@@ -665,13 +655,23 @@ function HexaCore.Functions.RemovePermission(source, permission)
     if changed then announcePermissionChange(source) end
 end
 
+-- principal ผูกกับเลข server id ที่ FXServer เอากลับมาใช้ซ้ำ ไม่ถอนตอนหลุด = คนถัดไปที่ได้ id เดิมรับสิทธิ์ไปด้วย
+-- ถอนดื้อ ๆ ไม่เช็ค IsPlayerAceAllowed ก่อน เพราะตอน event นี้ยิงผู้เล่นหลุดไปแล้ว การเช็คจะคืน false แล้วข้ามการถอน
+-- และไม่เรียก RemovePermission เพราะปลายทางยิง event หา client ที่ไม่อยู่แล้ว
+AddEventHandler('playerDropped', function()
+    local src = source
+    for _, permission in pairs(HexaCore.Commands.Permissions) do
+        ExecuteCommand(('remove_principal player.%s hexacore.%s'):format(src, permission))
+    end
+end)
+
 -- Checking for Permission Level
 
 ---Check if player has permission
 ---@param source any
 ---@param permission string
 ---@return boolean
-function HexaCore.Functions.HasPermission(source, permission)
+function HexaCore.HasPermission(source, permission)
     if type(permission) == 'string' then
         if IsPlayerAceAllowed(source, permission) then return true end
     elseif type(permission) == 'table' then
@@ -686,7 +686,7 @@ end
 ---Get the players permissions
 ---@param source any
 ---@return table
-function HexaCore.Functions.GetPermission(source)
+function HexaCore.GetPermissions(source)
     local src = source
     local perms = {}
     for _, v in pairs(HexaCore.Commands.Permissions) do
@@ -700,30 +700,30 @@ end
 ---Get admin messages opt-in state for player
 ---@param source any
 ---@return boolean
-function HexaCore.Functions.IsOptin(source)
-    local license = HexaCore.Functions.GetIdentifier(source)
-    if not license or not HexaCore.Functions.HasPermission(source, 'admin') then return false end
+function HexaCore.IsAdminAlertsEnabled(source)
+    local license = HexaCore.GetIdentifier(source)
+    if not license or not HexaCore.HasPermission(source, 'admin') then return false end
     -- แอดมินที่มี ace แต่ยังไม่ได้เลือกตัวละคร (หรือหลุดไปแล้ว) ไม่มีแถวใน
     -- HexaCore.Players — เดิมอ่าน Player.PlayerData ตรง ๆ แล้วพัง
-    local Player = HexaCore.Functions.GetPlayer(source)
+    local Player = HexaCore.GetPlayer(source)
     if not Player then return false end
     return Player.PlayerData.optin
 end
 
 ---Toggle opt-in to admin messages
 ---@param source any
-function HexaCore.Functions.ToggleOptin(source)
-    local license = HexaCore.Functions.GetIdentifier(source)
-    if not license or not HexaCore.Functions.HasPermission(source, 'admin') then return end
-    local Player = HexaCore.Functions.GetPlayer(source)
+function HexaCore.ToggleAdminAlerts(source)
+    local license = HexaCore.GetIdentifier(source)
+    if not license or not HexaCore.HasPermission(source, 'admin') then return end
+    local Player = HexaCore.GetPlayer(source)
     if not Player then return end
     Player.PlayerData.optin = not Player.PlayerData.optin
-    Player.Functions.SetPlayerData('optin', Player.PlayerData.optin)
+    Player.SetPlayerData('optin', Player.PlayerData.optin)
 end
 
 -- Retrieves information about the database connection.
 --- @return table; A table containing the database information.
-function HexaCore.Functions.GetDatabaseInfo()
+function HexaCore.GetDatabaseInfo()
     local details = {
         exists = false,
         database = "",
@@ -758,8 +758,8 @@ end
 ---@param items table|string
 ---@param amount number
 ---@return boolean
-function HexaCore.Functions.HasItem(source, items, amount)
-    -- ดูเหตุผลที่ต้องเป็น ~= 'started' ที่ HexaCore.Functions.UseItem
+function HexaCore.HasItem(source, items, amount)
+    -- ดูเหตุผลที่ต้องเป็น ~= 'started' ที่ HexaCore.UseItem
     if GetResourceState('hexa_inventory') ~= 'started' then return false end
     return exports['hexa_inventory']:HasItem(source, items, amount)
 end
@@ -769,10 +769,10 @@ end
 ---@param data any
 ---@param pattern any
 ---@return boolean
-function HexaCore.Functions.PrepForSQL(source, data, pattern)
+function HexaCore.PrepForSQL(source, data, pattern)
     data = tostring(data)
     local src = source
-    local player = HexaCore.Functions.GetPlayer(src)
+    local player = HexaCore.GetPlayer(src)
     local result = string.match(data, pattern)
     if not result or string.len(result) ~= string.len(data) then
         -- player อาจเป็น nil (ยังไม่เลือกตัวละคร / หลุดออกไปแล้ว) เดิมอ่าน
@@ -788,22 +788,22 @@ end
 ---@param source any
 ---@param weight number
 ---@return boolean
-function HexaCore.Functions.ChangeWeight(source, weight)
-    local Player = HexaCore.Functions.GetPlayer(source)
+function HexaCore.SetMaxWeight(source, weight)
+    local Player = HexaCore.GetPlayer(source)
     if not Player then return end
 
-    Player.Functions.SetPlayerData('weight', weight)
+    Player.SetPlayerData('weight', weight)
 end
 
 ---Change slots to player
 ---@param source any
 ---@param slots number
 ---@return boolean
-function HexaCore.Functions.ChangeSlots(source, slots)
-    local Player = HexaCore.Functions.GetPlayer(source)
+function HexaCore.SetMaxSlots(source, slots)
+    local Player = HexaCore.GetPlayer(source)
     if not Player then return end
 
-    Player.Functions.SetPlayerData('slots', slots)
+    Player.SetPlayerData('slots', slots)
 end
 
 --- Checks if a player has enough weight capacity to carry a specific amount of an item
@@ -811,8 +811,8 @@ end
 -- @param item string - The name of the item
 -- @param amount number - The quantity of the item to check
 -- @return boolean - True if the player can carry it, false if they cannot
-HexaCore.Functions.CanCarryItem = function(source, item, amount)
-    local Player = HexaCore.Functions.GetPlayer(source)
+HexaCore.CanCarryItem = function(source, item, amount)
+    local Player = HexaCore.GetPlayer(source)
     if not Player then return false end
 
     -- Fallback to 1 if amount isn't provided

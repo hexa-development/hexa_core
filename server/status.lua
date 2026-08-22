@@ -1,4 +1,4 @@
--- ============================================================
+﻿-- ============================================================
 -- hexa_core — ระบบสถานะร่างกาย (ฝั่ง server)
 -- ============================================================
 -- หิว (hunger) · กระหาย (thirst) · สะอาด (cleanliness) · เครียด (stress)
@@ -35,7 +35,7 @@ end
 local function readStatus(src)
     -- ตั้งชื่อ ply ไม่ใช่ Player เพราะ Player(...) เป็นฟังก์ชัน global ของ FiveM
     -- ที่ไฟล์นี้ต้องใช้อ่าน statebag — ตั้งชื่อชนกันเมื่อไหร่ statebag พังเงียบทันที
-    local ply = HexaCore.Functions.GetPlayer(src)
+    local ply = HexaCore.GetPlayer(src)
     if not ply then return nil end
 
     local metadata = ply.PlayerData.metadata or {}
@@ -49,7 +49,7 @@ end
 --- เขียนค่าหลายช่องพร้อมกันแล้วบอก client รอบเดียว
 --- values = { hunger = 80, thirst = 55, ... } (ช่องที่ไม่รู้จักถูกทิ้ง)
 local function writeStatus(src, values)
-    local ply = HexaCore.Functions.GetPlayer(src)
+    local ply = HexaCore.GetPlayer(src)
     if not ply then return nil end
 
     local applied = {}
@@ -61,7 +61,7 @@ local function writeStatus(src, values)
     if not next(applied) then return nil end
 
     -- SetMetaData แบบตารางเรียก UpdatePlayerData ให้ครั้งเดียว (ไม่ใช่ครั้งต่อคีย์)
-    ply.Functions.SetMetaData(applied)
+    ply.SetMetaData(applied)
 
     -- statebag ของผู้เล่น: สคริปต์อื่นอ่าน Player(src).state.hunger ได้โดยไม่ต้องขอ core object
     -- และ InitializeStateBags/PersistStateBags ใน player.lua ใช้ช่องเดียวกันนี้อยู่แล้ว
@@ -173,12 +173,12 @@ HexaCore.Commands.Add('setstatus', 'ตั้งค่าสถานะร่�
     local value = tonumber(args[3])
 
     if not target or not IsStatusKey[key] or not value then
-        return HexaCore.Functions.Notify(source, { title = 'ใช้: /setstatus [id] [hunger|thirst|cleanliness|stress] [0-100]', type = 'error', duration = 5000 })
+        return HexaCore.Notify(source, { title = 'ใช้: /setstatus [id] [hunger|thirst|cleanliness|stress] [0-100]', type = 'error', duration = 5000 })
     end
 
     if not writeStatus(target, { [key] = value }) then
-        return HexaCore.Functions.Notify(source, { title = 'ไม่พบผู้เล่นไอดีนี้', type = 'error', duration = 5000 })
+        return HexaCore.Notify(source, { title = 'ไม่พบผู้เล่นไอดีนี้', type = 'error', duration = 5000 })
     end
 
-    HexaCore.Functions.Notify(source, { title = ('ตั้ง %s ของไอดี %s เป็น %s แล้ว'):format(key, target, clamp(value)), type = 'success', duration = 5000 })
+    HexaCore.Notify(source, { title = ('ตั้ง %s ของไอดี %s เป็น %s แล้ว'):format(key, target, clamp(value)), type = 'success', duration = 5000 })
 end, 'admin')

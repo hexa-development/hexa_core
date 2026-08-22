@@ -1,4 +1,4 @@
--- Event Handler
+﻿-- Event Handler
 
 AddEventHandler('chatMessage', function(_, _, message)
     if string.sub(message, 1, 1) == '/' then
@@ -13,7 +13,7 @@ AddEventHandler('playerDropped', function(reason)
     local Player = HexaCore.Players[src]
     TriggerEvent('hexa_log:server:CreateLog', 'joinleave', 'Dropped', 'red', '**' .. GetPlayerName(src) .. '** (' .. Player.PlayerData.license .. ') left..' .. '\n **Reason:** ' .. reason)
     TriggerEvent('HexaCore:Server:PlayerDropped', Player)
-    Player.Functions.Save()
+    Player.Save()
     HexaCore.Player_Buckets[Player.PlayerData.license] = nil
     HexaCore.Players[src] = nil
 end)
@@ -40,7 +40,7 @@ local function onPlayerConnecting(name, _, deferrals)
 
     Wait(0)
     deferrals.update(string.format('Hello %s. กำลังตรวจสอบตัวตนผู้เล่น...', name))
-    local identifier = HexaCore.Functions.GetIdentifier(src)
+    local identifier = HexaCore.GetIdentifier(src)
 
     -- ไม่มี identifier ที่ต้องใช้ (เช่นตั้งค่า steam แต่ผู้เล่นไม่ได้เปิดเกมผ่าน Steam)
     -- -> เตะออกจากหน้าโหลด/หน้าเชื่อมต่อทันที พร้อมข้อความบอกสาเหตุ
@@ -73,7 +73,7 @@ end)
 -- Server Callback
 RegisterNetEvent('HexaCore:Server:TriggerCallback', function(name, ...)
     local src = source
-    HexaCore.Functions.TriggerCallback(name, src, function(...)
+    HexaCore.TriggerCallback(name, src, function(...)
         TriggerClientEvent('HexaCore:Client:TriggerCallback', src, name, ...)
     end, ...)
 end)
@@ -87,19 +87,21 @@ local SAVE_COOLDOWN_MS = 30000
 
 AddEventHandler('playerDropped', function() lastSave[source] = nil end)
 
-RegisterNetEvent('HexaCore:UpdatePlayer', function()
+-- AddEventHandler ไม่ใช่ RegisterNetEvent: client ยิงสั่งเขียน DB เองไม่ได้อีกแล้ว
+-- เหลือทางเดียวคือ [bridge]/rsg-core ส่งต่อมาฝั่ง server ซึ่งยังโดนคูลดาวน์ตัวเดียวกัน
+AddEventHandler('HexaCore:UpdatePlayer', function()
     local src = source
     local now = GetGameTimer()
     if lastSave[src] and (now - lastSave[src]) < SAVE_COOLDOWN_MS then return end
     lastSave[src] = now
-    local Player = HexaCore.Functions.GetPlayer(src)
+    local Player = HexaCore.GetPlayer(src)
     if not Player then return end
-    Player.Functions.Save()
+    Player.Save()
 end)
 
 -- คีย์ metadata ที่ยอมให้ client เขียนเองได้เท่านั้น
 -- ที่เหลือ (injail / isdead / criminalrecord / rep / walletid / fingerprint ฯลฯ) ต้องให้ฝั่ง server
--- เรียก Player.Functions.SetMetaData เอง ไม่งั้น client ยิง event ตรงมาเคลียร์คุก/ปั้ม rep ได้
+-- เรียก Player.SetMetaData เอง ไม่งั้น client ยิง event ตรงมาเคลียร์คุก/ปั้ม rep ได้
 local CLIENT_SETTABLE_META = {
     hunger = true, thirst = true, cleanliness = true, stress = true,
 }
@@ -110,21 +112,21 @@ RegisterNetEvent('HexaCore:Server:SetMetaData', function(meta, data)
         return print(('[hexa_core][SECURITY] id %s tried to set metadata key %s'):format(src, tostring(meta)))
     end
     if type(data) ~= 'number' and type(data) ~= 'boolean' then return end
-    local Player = HexaCore.Functions.GetPlayer(src)
+    local Player = HexaCore.GetPlayer(src)
     if not Player then return end
-    Player.Functions.SetMetaData(meta, data)
+    Player.SetMetaData(meta, data)
 end)
 
 RegisterNetEvent('HexaCore:ToggleDuty', function()
     local src = source
-    local Player = HexaCore.Functions.GetPlayer(src)
+    local Player = HexaCore.GetPlayer(src)
     if not Player then return end
     if Player.PlayerData.job.onduty then
-        Player.Functions.SetJobDuty(false)
-        HexaCore.Functions.Notify(src, {title = Lang:t('info.off_duty'), type = 'info', duration = 5000 })
+        Player.SetJobDuty(false)
+        HexaCore.Notify(src, {title = Lang:t('info.off_duty'), type = 'info', duration = 5000 })
     else
-        Player.Functions.SetJobDuty(true)
-        HexaCore.Functions.Notify(src, {title = Lang:t('info.on_duty'), type = 'info', duration = 5000 })
+        Player.SetJobDuty(true)
+        HexaCore.Notify(src, {title = Lang:t('info.on_duty'), type = 'info', duration = 5000 })
     end
 
     TriggerEvent('HexaCore:Server:SetDuty', src, Player.PlayerData.job.onduty)
@@ -135,8 +137,9 @@ end)
 
 -- This event is exploitable and should not be used. It has been deprecated, and will be removed soon.
 RegisterNetEvent('HexaCore:Server:UseItem', function(item)
-    print(string.format('%s triggered HexaCore:Server:UseItem by ID %s with the following data. This event is deprecated due to exploitation, and will be removed soon. Check hexa_inventory for the right use on this event.', GetInvokingResource(), source))
-    HexaCore.Debug(item)
+    Core.Warn('%s triggered the deprecated HexaCore:Server:UseItem for id %s - this event is exploitable and goes away next release, use hexa_inventory instead',
+        tostring(GetInvokingResource()), source)
+    Core.DumpTable(item)
 end)
 
 -- This event is exploitable and should not be used. It has been deprecated, and will be removed soon. function(itemName, amount, slot)
@@ -156,17 +159,17 @@ end)
 RegisterNetEvent('HexaCore:CallCommand', function(command, args)
     local src = source
     if not HexaCore.Commands.List[command] then return end
-    local Player = HexaCore.Functions.GetPlayer(src)
+    local Player = HexaCore.GetPlayer(src)
     if not Player then return end
-    local hasPerm = HexaCore.Functions.HasPermission(src, 'command.' .. HexaCore.Commands.List[command].name)
+    local hasPerm = HexaCore.HasPermission(src, 'command.' .. HexaCore.Commands.List[command].name)
     if hasPerm then
         if HexaCore.Commands.List[command].argsrequired and #HexaCore.Commands.List[command].arguments ~= 0 and not args[#HexaCore.Commands.List[command].arguments] then
-            HexaCore.Functions.Notify(src, {title = Lang:t('error.missing_args2'), type = 'error', duration = 5000 })
+            HexaCore.Notify(src, {title = Lang:t('error.missing_args2'), type = 'error', duration = 5000 })
         else
             HexaCore.Commands.List[command].callback(src, args)
         end
     else
-        HexaCore.Functions.Notify(src, {title = Lang:t('error.no_access'), type = 'error', duration = 5000 })
+        HexaCore.Notify(src, {title = Lang:t('error.no_access'), type = 'error', duration = 5000 })
     end
 end)
 
@@ -174,8 +177,8 @@ end)
 -- Vehicle server-side spawning callback (netId)
 -- use the netid on the client with the NetworkGetEntityFromNetworkId native
 -- convert it to a vehicle via the NetToVeh native
-HexaCore.Functions.CreateCallback('HexaCore:Server:SpawnVehicle', function(source, cb, model, coords, warp)
-    local veh = HexaCore.Functions.SpawnVehicle(source, model, coords, warp)
+HexaCore.CreateCallback('HexaCore:Server:SpawnVehicle', function(source, cb, model, coords, warp)
+    local veh = HexaCore.SpawnVehicle(source, model, coords, warp)
     cb(NetworkGetNetworkIdFromEntity(veh))
 end)
 

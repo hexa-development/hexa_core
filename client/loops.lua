@@ -1,13 +1,5 @@
-CreateThread(function()
-    local interval = (1000 * 60) * HexaCore.Config.UpdateInterval
-
-    while true do
-        Wait(interval)
-        if LocalPlayer.state.isLoggedIn then
-            TriggerServerEvent("HexaCore:UpdatePlayer")
-        end
-    end
-end)
+-- ลูปนับเวลาเซฟเคยอยู่ตรงนี้ ย้ายไป server/save.lua แล้ว
+-- client เป็นคนนับเวลาแปลว่าไม่ยิงก็ไม่มีวันเซฟ และเปิดทางให้สั่งเขียน DB รัว ๆ ได้ด้วย
 
 -- ปิดปุ่ม/prompt ของเกมที่ไม่ต้องการ
 -- (DisableControlAction มีผลแค่เฟรมเดียว จำเป็นต้องเรียกทุกเฟรม)

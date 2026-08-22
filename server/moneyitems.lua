@@ -1,4 +1,4 @@
----------------------------------------------------
+﻿---------------------------------------------------
 -- Helper tables to map money items - do not change
 ---------------------------------------------------
 
@@ -42,9 +42,9 @@ local function getInventoryMoney(playerData)
 end
 
 local function removeItems(player, itemName, amountToRemove)
-    for _, item in ipairs(player.Functions.GetItemsByName(itemName) or {}) do
+    for _, item in ipairs(player.GetItemsByName(itemName) or {}) do
         local removeAmount = math.min(item.amount, amountToRemove)
-        player.Functions.RemoveItem(item.name, removeAmount, item.slot)
+        player.RemoveItem(item.name, removeAmount, item.slot)
         amountToRemove = amountToRemove - removeAmount
         if amountToRemove <= 0 then break end
     end
@@ -65,16 +65,16 @@ end
 ----------------------------
 
 local function handleAddMoney(src, moneytype, amount)
-    local player = HexaCore.Functions.GetPlayer(src)
+    local player = HexaCore.GetPlayer(src)
     if not player or not moneyItems[moneytype] then return end
 
     local dollars, cents = getParts(amount)
 
     if dollars > 0 then
-        player.Functions.AddItem(moneyItems[moneytype].dollar, dollars)
+        player.AddItem(moneyItems[moneytype].dollar, dollars)
     end
     if cents > 0 then
-        player.Functions.AddItem(moneyItems[moneytype].cent, cents)
+        player.AddItem(moneyItems[moneytype].cent, cents)
     end
 
     if Player(src).state.inv_busy then
@@ -83,7 +83,7 @@ local function handleAddMoney(src, moneytype, amount)
 end
 
 local function handleRemoveMoney(src, moneytype, amount)
-    local player = HexaCore.Functions.GetPlayer(src)
+    local player = HexaCore.GetPlayer(src)
     if not player or not moneyItems[moneytype] then return false end
 
     local inventoryMoney = getInventoryMoney(player.PlayerData)
@@ -116,7 +116,7 @@ local function handleRemoveMoney(src, moneytype, amount)
     end
     
     if changeInCents > 0 then 
-        player.Functions.AddItem(centName, changeInCents) 
+        player.AddItem(centName, changeInCents) 
     end
 
     if Player(src).state.inv_busy then
@@ -127,12 +127,12 @@ local function handleRemoveMoney(src, moneytype, amount)
 end
 
 local function handleSetMoney(src, moneytype, amount)
-    local player = HexaCore.Functions.GetPlayer(src)
+    local player = HexaCore.GetPlayer(src)
     if not player or not moneyItems[moneytype] then return end
 
     local function removeAllItems(itemName)
-        for _, item in ipairs(player.Functions.GetItemsByName(itemName) or {}) do
-            player.Functions.RemoveItem(item.name, item.amount, item.slot)
+        for _, item in ipairs(player.GetItemsByName(itemName) or {}) do
+            player.RemoveItem(item.name, item.amount, item.slot)
         end
     end
 
@@ -142,8 +142,8 @@ local function handleSetMoney(src, moneytype, amount)
     local dollars, cents = math.modf(amount)
     cents = math.floor(cents * 100)
 
-    if dollars > 0 then player.Functions.AddItem(moneyItems[moneytype].dollar, dollars) end
-    if cents > 0 then player.Functions.AddItem(moneyItems[moneytype].cent, cents) end
+    if dollars > 0 then player.AddItem(moneyItems[moneytype].dollar, dollars) end
+    if cents > 0 then player.AddItem(moneyItems[moneytype].cent, cents) end
 
     if Player(src).state.inv_busy then
         TriggerClientEvent('hexa_inventory:client:updateInventory', src)
@@ -158,14 +158,14 @@ local initialized = {}
 RegisterNetEvent('HexaCore:Server:OnPlayerLoaded')
 AddEventHandler('HexaCore:Server:OnPlayerLoaded', function()
     local src = source
-    local player = HexaCore.Functions.GetPlayer(src)
+    local player = HexaCore.GetPlayer(src)
     if not player then return end
 
     -- ไม่มีระบบ inventory (hexa_inventory) = ไม่มีเมธอดจัดการไอเทม (GetItemsByName ฯลฯ)
     -- ข้ามการจัดการไอเทมเงินไปเลย กัน error ตอนผู้เล่น login
     -- (เมธอดชุดนี้ประกาศไว้ที่ server/player.lua แล้ว และคืนค่าปลอดภัยเองเมื่อ
     --  hexa_inventory ไม่ได้ start อยู่ การเช็คนี้จึงเหลือไว้เป็นด่านสุดท้าย)
-    if not player.Functions.GetItemsByName then
+    if not player.GetItemsByName then
         initialized[player.PlayerData.citizenid] = true
         return
     end
@@ -185,8 +185,8 @@ AddEventHandler('HexaCore:Server:OnPlayerLoaded', function()
         end
     else
         local function removeAllItems(itemName)
-            for _, item in ipairs(player.Functions.GetItemsByName(itemName) or {}) do
-                player.Functions.RemoveItem(item.name, item.amount, item.slot, 'money-item-cleanup')
+            for _, item in ipairs(player.GetItemsByName(itemName) or {}) do
+                player.RemoveItem(item.name, item.amount, item.slot, 'money-item-cleanup')
             end
         end
 
