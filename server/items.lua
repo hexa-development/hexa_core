@@ -96,11 +96,16 @@ local function buildCatalogue(rows)
 end
 
 local function loadItemsFromDatabase()
-    local rows = MySQL.query.await('SELECT * FROM items')
+    -- เหตุผลเดียวกับ jobs: คิวรีล้มแล้วเงียบ = ผู้เล่นเสียของทั้งกระเป๋าเพราะ LoadInventory ตัดของที่ไม่รู้จักทิ้ง
+    local ok, rows = pcall(MySQL.query.await, 'SELECT * FROM items')
+    if not ok then
+        Hexa.Error('could not read the items table - only weapons will be registered, so unknown items get dropped from inventories. %s', tostring(rows))
+        rows = nil
+    end
     if not rows or #rows == 0 then
         -- ไม่ return แล้ว: ต่อให้ตาราง items ว่าง อาวุธก็ยังต้องลงทะเบียนให้ครบ
         -- ไม่งั้นผู้เล่นเสียอาวุธทั้งหมดตอนโหลด (LoadInventory ตัดของที่ไม่รู้จักทิ้ง)
-        print('^3[hexa_core] WARN: items table is empty - only weapons will be registered. Check that install.sql seeded correctly^7')
+        Hexa.Warn('the items table is empty - only weapons will be registered. check that install.sql seeded correctly')
         rows = {}
     end
 
@@ -114,8 +119,7 @@ local function loadItemsFromDatabase()
         count = count + 1
         if item.type == 'weapon' then weapons = weapons + 1 end
     end
-    print(('[hexa_core] Item catalogue ready: %d entries (weapons %d, general %d)')
-        :format(count, weapons, count - weapons))
+    Hexa.Log('item catalogue ready: %d entries (%d weapons, %d general)', count, weapons, count - weapons)
 
     -- sync ให้ client ที่ออนไลน์อยู่ (กรณี restart กลางเกม) + refresh core object
     TriggerClientEvent('HexaCore:Client:OnSharedUpdateMultiple', -1, 'Items', items)

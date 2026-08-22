@@ -48,7 +48,7 @@ RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
     spawning[src] = nil
 
     if not ok then
-        print(('[hexa_core] RequestSpawn failed for id %s: %s'):format(src, err))
+        Hexa.Log('RequestSpawn failed for id %s: %s', src, err)
         return -- client จะ retry เองใน 10 วิ
     end
 

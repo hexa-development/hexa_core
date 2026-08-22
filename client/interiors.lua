@@ -36,7 +36,7 @@ function ActivateInteriorEntitySets(interior, name, sets)
 
     if changed then
         if RefreshInterior ~= nil then RefreshInterior(interior) end
-        print(('%s interior %s activated'):format(name, interior))
+        Hexa.Debug('interior %s activated (%s)', tostring(interior), tostring(name))
     end
 end
 CreateThread(function()

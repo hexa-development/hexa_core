@@ -155,11 +155,24 @@ end
 -----------------------------------------------------------------
 
 local initialized = {}
+
+-- event นี้ client เป็นคนยิงและมี resource อื่นอีกหกตัวรอฟังอยู่ จึงถอดออกไม่ได้
+-- แต่การกระทบยอดไอเทมเงินด้านล่างต้องทำครั้งเดียวต่อการเข้าเกมหนึ่งครั้ง
+-- ไม่งั้นยิงซ้ำเมื่อไหร่ก็ได้เงินงอกเพิ่มทุกครั้ง
+local reconciled = {}
+
+AddEventHandler('playerDropped', function() reconciled[source] = nil end)
+
 RegisterNetEvent('HexaCore:Server:OnPlayerLoaded')
 AddEventHandler('HexaCore:Server:OnPlayerLoaded', function()
     local src = source
     local player = HexaCore.GetPlayer(src)
     if not player then return end
+
+    if reconciled[src] then
+        return Hexa.Debug('ignored a repeat OnPlayerLoaded from id %s - money items were already reconciled', tostring(src))
+    end
+    reconciled[src] = true
 
     -- ไม่มีระบบ inventory (hexa_inventory) = ไม่มีเมธอดจัดการไอเทม (GetItemsByName ฯลฯ)
     -- ข้ามการจัดการไอเทมเงินไปเลย กัน error ตอนผู้เล่น login

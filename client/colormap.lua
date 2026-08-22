@@ -29,7 +29,7 @@ end
 local function debugPrint(message)
     local cfg = colormapConfig()
     if cfg and cfg.Debug then
-        print(('[hexa_core] [colormap] %s'):format(message))
+        Hexa.Log('[colormap] %s', message)
     end
 end
 
@@ -77,8 +77,7 @@ local function setZoneColor(zone, color)
     local styleHash = resolveColor(color)
 
     if not zoneHash or not styleHash then
-        print(('[hexa_core] [colormap] skipped zone: invalid hash or color (zone=%s color=%s)')
-            :format(tostring(zone), tostring(color)))
+        Hexa.Log('[colormap] skipped zone: invalid hash or color (zone=%s color=%s)', tostring(zone), tostring(color))
         return false
     end
 
@@ -117,7 +116,7 @@ local function refreshZoneColors()
     end
 
     if type(cfg.Zones) ~= 'table' then
-        print('[hexa_core] [colormap] Config.Colormap.Zones must be a table')
+        Hexa.Warn('colormap Config.Colormap.Zones must be a table')
         return 0
     end
 
@@ -125,7 +124,7 @@ local function refreshZoneColors()
     for i = 1, #cfg.Zones do
         local zone = cfg.Zones[i]
         if type(zone) ~= 'table' then
-            print(('[hexa_core] [colormap] skipped Zones[%d]: not a table'):format(i))
+            Hexa.Log('[colormap] skipped Zones[%d]: not a table', i)
         elseif setZoneColor(zone.hash, zone.color or zone.style) then
             applied = applied + 1
         end
@@ -160,7 +159,7 @@ if colormapConfig() and colormapConfig().Debug then
     -- the high ones are the big containers (state). Types with no zone are skipped.
     RegisterCommand('zonehash', function()
         local coords = GetEntityCoords(PlayerPedId())
-        print(('[hexa_core] [colormap] zones at %.2f %.2f %.2f'):format(coords.x, coords.y, coords.z))
+        Hexa.Log('[colormap] zones at %.2f %.2f %.2f', coords.x, coords.y, coords.z)
 
         local found = 0
         for zoneType = 0, 15 do
@@ -184,13 +183,12 @@ if colormapConfig() and colormapConfig().Debug then
     RegisterCommand('zonestyle', function(_, args)
         local zone, style = args[1], args[2]
         if not zone or not style then
-            print('[hexa_core] [colormap] usage: /zonestyle <hash|name> <color|BLIP_STYLE_*>')
+            Hexa.Log('colormap usage: /zonestyle <hash|name> <color|BLIP_STYLE_*>')
             return
         end
 
         if setZoneColor(tonumber(zone) or zone, style) then
-            print(('[hexa_core] [colormap] painted %s with %s — open the map to check')
-                :format(zone, style))
+            Hexa.Log('[colormap] painted %s with %s — open the map to check', zone, style)
         end
     end, false)
 
@@ -203,7 +201,7 @@ if colormapConfig() and colormapConfig().Debug then
             return
         end
 
-        print(('[hexa_core] [colormap] repainted %d zones from config'):format(refreshZoneColors()))
+        Hexa.Log('[colormap] repainted %d zones from config', refreshZoneColors())
     end, false)
 end
 

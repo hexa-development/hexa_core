@@ -16,7 +16,7 @@ function HexaCore.Notify(source, data)
         if data and data.description and data.description ~= '' then
             text = text ~= '' and (text .. ': ' .. data.description) or data.description
         end
-        print(('[hexa_core] Notify (console): %s'):format(text))
+        Hexa.Log('Notify (console): %s', text)
         return
     end
     TriggerClientEvent('HexaCore:Notify', src, data)
@@ -349,8 +349,7 @@ function HexaCore.SpawnVehicle(source, model, coords, warp)
     local deadline = GetGameTimer() + SPAWN_TIMEOUT_MS
     while not DoesEntityExist(veh) do
         if GetGameTimer() > deadline then
-            print(('[hexa_core][ERROR][SPAWN_VEHICLE] Vehicle entity never existed | Source: %s | Model: %s')
-                :format(tostring(source), tostring(model)))
+            Hexa.Error('spawn_vehicle Vehicle entity never existed | Source: %s | Model: %s', tostring(source), tostring(model))
             return 0
         end
         Wait(SPAWN_POLL_MS)
@@ -360,8 +359,7 @@ function HexaCore.SpawnVehicle(source, model, coords, warp)
         deadline = GetGameTimer() + SPAWN_TIMEOUT_MS
         while GetVehiclePedIsIn(ped) ~= veh do
             if GetGameTimer() > deadline then
-                print(('[hexa_core][WARN][SPAWN_VEHICLE] Warp into vehicle timed out | Source: %s')
-                    :format(tostring(source)))
+                Hexa.Warn('spawn_vehicle Warp into vehicle timed out | Source: %s', tostring(source))
                 break
             end
             TaskWarpPedIntoVehicle(ped, veh, -1)
@@ -372,8 +370,7 @@ function HexaCore.SpawnVehicle(source, model, coords, warp)
     deadline = GetGameTimer() + SPAWN_TIMEOUT_MS
     while NetworkGetEntityOwner(veh) ~= source do
         if GetGameTimer() > deadline then
-            print(('[hexa_core][WARN][SPAWN_VEHICLE] Ownership never migrated to source | Source: %s')
-                :format(tostring(source)))
+            Hexa.Warn('spawn_vehicle Ownership never migrated to source | Source: %s', tostring(source))
             break
         end
         Wait(SPAWN_POLL_MS)
@@ -401,8 +398,7 @@ function HexaCore.CreateVehicle(source, model, vehtype, coords, warp)
     local deadline = GetGameTimer() + SPAWN_TIMEOUT_MS
     while not DoesEntityExist(veh) do
         if GetGameTimer() > deadline then
-            print(('[hexa_core][ERROR][CREATE_VEHICLE] Vehicle entity never existed | Source: %s | Model: %s')
-                :format(tostring(source), tostring(model)))
+            Hexa.Error('create_vehicle Vehicle entity never existed | Source: %s | Model: %s', tostring(source), tostring(model))
             return 0
         end
         Wait(SPAWN_POLL_MS)
@@ -428,8 +424,7 @@ local function paycheckAccount(Player)
     end
     if not paycheckAccountWarned then
         paycheckAccountWarned = true
-        print(('[hexa_core][WARN][PAYCHECK] No usable money account found; expected one of: %s')
-            :format(table.concat(PAYCHECK_ACCOUNTS, ', ')))
+        Hexa.Warn('paycheck No usable money account found; expected one of: %s', table.concat(PAYCHECK_ACCOUNTS, ', '))
     end
     return nil
 end
@@ -452,7 +447,7 @@ local function societyBalance(jobName)
     if not cfg then
         if not societyWarned then
             societyWarned = true
-            print('[hexa_core][WARN][PAYCHECK] PayCheckSociety is enabled but no society resource is available - paying from the system instead')
+            Hexa.Warn('paycheck PayCheckSociety is on but no society resource is available - paying from the system instead')
         end
         return nil
     end
@@ -461,8 +456,7 @@ local function societyBalance(jobName)
         return exports[cfg.resource][cfg.getBalance or 'GetAccountBalance'](jobName)
     end)
     if not ok then
-        print(('[hexa_core][ERROR][PAYCHECK] Society balance lookup failed | Target: %s | Export: %s | Error: %s')
-            :format(cfg.resource, tostring(cfg.getBalance or 'GetAccountBalance'), tostring(balance)))
+        Hexa.Error('paycheck Society balance lookup failed | Target: %s | Export: %s | Error: %s', cfg.resource, tostring(cfg.getBalance or 'GetAccountBalance'), tostring(balance))
         return nil
     end
     return tonumber(balance)
@@ -477,8 +471,7 @@ local function societyRemoveMoney(jobName, amount)
         exports[cfg.resource][cfg.removeMoney or 'RemoveMoney'](jobName, amount, 'Employee Paycheck')
     end)
     if not ok then
-        print(('[hexa_core][ERROR][PAYCHECK] Society withdrawal failed | Target: %s | Export: %s | Error: %s')
-            :format(cfg.resource, tostring(cfg.removeMoney or 'RemoveMoney'), tostring(err)))
+        Hexa.Error('paycheck Society withdrawal failed | Target: %s | Export: %s | Error: %s', cfg.resource, tostring(cfg.removeMoney or 'RemoveMoney'), tostring(err))
         return false
     end
     return true
@@ -572,7 +565,7 @@ function HexaCore.UseItem(source, item)
     -- 'starting' / 'uninitialized' ด้วย แล้วการเรียก export จะ error
     -- ("attempt to index a nil value") ต้องเช็คว่า started จริงเท่านั้น
     if GetResourceState('hexa_inventory') ~= 'started' then
-        print('[hexa_core][WARN][EXPORT] UseItem skipped - hexa_inventory is not started')
+        Hexa.Warn('export UseItem skipped - hexa_inventory is not started')
         return
     end
     exports['hexa_inventory']:UseItem(source, item)
@@ -821,7 +814,7 @@ HexaCore.CanCarryItem = function(source, item, amount)
     -- Fetch item data from the framework's shared config to get its weight
     local itemData = HexaCore.Shared.Items[item:lower()]
     if not itemData then 
-        print(("^1[hexa_core] Error:^7 Item '%s' does not exist in shared items."):format(item))
+        Hexa.Error('item %s does not exist in the shared item catalogue', tostring(item))
         return false 
     end
 

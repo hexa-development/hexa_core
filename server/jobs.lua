@@ -6,12 +6,24 @@
 -- แก้ไข/เพิ่มอาชีพ: แก้ข้อมูลใน DB โดยตรง แล้ว restart hexa_core
 
 local function loadJobsFromDatabase()
-    local jobRows = MySQL.query.await('SELECT * FROM jobs')
-    if not jobRows or #jobRows == 0 then
-        print('^1[hexa_core] WARN: jobs table is empty - no jobs registered at all! Check that install.sql seeded correctly^7')
+    -- ไม่ห่อ pcall ไว้ คิวรีที่ล้ม (ตารางหาย เชื่อมต่อหลุด) จะฆ่าเธรดนี้เงียบ ๆ
+    -- แล้ว Shared.Jobs ค้างว่าง ผลคือทุกคนกลายเป็นคนตกงานโดยไม่มีอะไรฟ้องว่าเพราะอะไร
+    local ok, jobRows = pcall(MySQL.query.await, 'SELECT * FROM jobs')
+    if not ok then
+        Hexa.Error('could not read the jobs table - every player will load as unemployed. %s', tostring(jobRows))
         return
     end
-    local gradeRows = MySQL.query.await('SELECT * FROM job_grades') or {}
+    if not jobRows or #jobRows == 0 then
+        Hexa.Warn('the jobs table is empty - no jobs are registered. check that install.sql seeded correctly')
+        return
+    end
+
+    local gradesOk, gradeRows = pcall(MySQL.query.await, 'SELECT * FROM job_grades')
+    if not gradesOk then
+        Hexa.Error('could not read job_grades - every job will load with no grades. %s', tostring(gradeRows))
+        gradeRows = {}
+    end
+    gradeRows = gradeRows or {}
 
     -- สร้างโครงสร้างเดียวกับ Shared.Jobs เดิม โค้ดส่วนอื่นไม่ต้องแก้
     local jobs = {}
@@ -50,7 +62,7 @@ local function loadJobsFromDatabase()
 
     local count = 0
     for _ in pairs(jobs) do count = count + 1 end
-    print(('[hexa_core] Loaded %d jobs from the database'):format(count))
+    Hexa.Log('loaded %d job(s) from the database', count)
 
     -- sync ให้ client ที่ออนไลน์อยู่ (กรณี restart กลางเกม) + refresh core object
     TriggerClientEvent('HexaCore:Client:OnSharedUpdateMultiple', -1, 'Jobs', jobs)

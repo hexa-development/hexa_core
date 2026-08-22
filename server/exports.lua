@@ -217,7 +217,7 @@ local resourceName = GetCurrentResourceName()
 local function GetCoreVersion(InvokingResource)
     local resourceVersion = GetResourceMetadata(resourceName, 'version')
     if InvokingResource and InvokingResource ~= '' then
-        print(('%s called Hexacore version check: %s'):format(InvokingResource or 'Unknown Resource', resourceVersion))
+        Hexa.Debug('%s asked for the core version: %s', tostring(InvokingResource or 'unknown resource'), tostring(resourceVersion))
     end
     return resourceVersion
 end

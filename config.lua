@@ -6,7 +6,7 @@
 
 Config.MaxPlayers = GetConvarInt('sv_maxclients', 48) -- จำนวนผู้เล่นสูงสุด ดึงค่ามาจาก convar "sv_maxclients" ใน server.cfg อัตโนมัติ (ถ้าไม่ได้ตั้งไว้จะใช้ค่าเริ่มต้น 48)
 Config.IdentifierType = 'steam' -- ตัวระบุตัวตนผู้เล่นที่ใช้ผูกตัวละคร (คอลัมน์ identifier ในตาราง users) 'steam' = steam hex / 'license' = Rockstar license
-                                -- ⚠️ ถ้าใช้ 'steam' ผู้เล่นต้องเปิดเกมผ่าน Steam (มี steam id) ไม่งั้นจะเข้าเซิร์ฟไม่ได้ (ถูกเตะตอน connect) — ปลอดภัยสุดคือ 'license' ที่ผู้เล่น RedM ทุกคนมี
+                                -- ถ้าใช้ 'steam' ผู้เล่นต้องเปิดเกมผ่าน Steam (มี steam id) ไม่งั้นจะเข้าเซิร์ฟไม่ได้ (ถูกเตะตอน connect) — ปลอดภัยสุดคือ 'license' ที่ผู้เล่น RedM ทุกคนมี
 Config.MultiCharacter = true -- true = ใช้หน้าเลือกตัวละคร hexa_multicharacter (ปิด auto-login) / false = auto-login ตัวละครล่าสุดให้อัตโนมัติ ไม่มีหน้าเลือก
 Config.DefaultSpawn = vector4(-2784.2534, -3058.2639, -12.3404, 333.5929) -- จุดเกิดเริ่มต้นของตัวละครใหม่ (x, y, z, ทิศทางที่หันหน้า) ใช้เมื่อผู้เล่นยังไม่มีตำแหน่งบันทึกไว้
 Config.Debug = false -- true = เปิดข้อความ [DEBUG] ทั้งระบบ (ปิดอยู่จะไม่เสียเวลาสร้างสตริงเลย)
@@ -60,7 +60,7 @@ Config.Money.MoneyTypes = {
 -- เข้า 'bank' ให้อัตโนมัติตอนโหลด (ดู MergeLegacyBankAccounts ใน server/player.lua)
 Config.Money.DontAllowMinus = {'cash', 'gold', 'bank', 'bloodmoney'} -- รายชื่อประเภทเงินที่ "ห้ามติดลบ" เด็ดขาด (หักแล้วเหลือต่ำกว่า 0 ไม่ได้)
 Config.Money.MinusLimit = 0 -- ยอดติดลบสูงสุดที่อนุญาต สำหรับประเภทเงินที่ไม่ได้อยู่ในลิสต์ข้างบน
--- ⚠️ เดิม bank/bloodmoney ไม่อยู่ในลิสต์ + MinusLimit = -5000 ทำให้ RemoveMoney('bank', n) คืน true
+-- เดิม bank/bloodmoney ไม่อยู่ในลิสต์ + MinusLimit = -5000 ทำให้ RemoveMoney('bank', n) คืน true
 -- ทั้งที่ยอดไม่พอ = สคริปต์ที่เขียนตามสัญญามาตรฐาน `if RemoveMoney(...) then giveGoods() end` แจกของฟรี
 -- ตอนนี้ server/player.lua บีบเพดานล่างไว้ที่ 0 เสมอ ต่อให้แก้ค่าสองบรรทัดนี้กลับก็เปิดช่องโหว่ไม่ได้
 Config.Money.PayCheckTimeOut = 10 -- รอบเวลาการจ่ายเงินเดือน (paycheck) ให้ผู้เล่นตามค่า payment ของอาชีพ (หน่วยเป็นนาที)
@@ -200,7 +200,7 @@ Config.Density = {
 -- ค่าทั้งสี่เก็บใน metadata ของตัวละคร (ดู Config.Player.PlayerDefaults.metadata)
 -- ตัวเลข 0-100 เสมอ  หิว/กระหาย/สะอาด: 100 = ดีที่สุด   เครียด: 0 = ดีที่สุด
 --
--- ⚠️ รอบลดค่าเดินอยู่ "ฝั่ง server" (server/status.lua) ไม่ใช่ฝั่ง client แบบต้นฉบับ
+-- รอบลดค่าเดินอยู่ "ฝั่ง server" (server/status.lua) ไม่ใช่ฝั่ง client แบบต้นฉบับ
 -- เพราะ client ยิง HexaCore:Server:SetMetaData เองได้ ถ้าปล่อยให้ client เป็นคนนับเวลา
 -- ก็แค่ไม่ยิงก็ไม่มีวันหิว  ฝั่ง client เหลือหน้าที่เดียวคือหักเลือดตอนค่าแตะ 0
 -- (ต้องทำที่ ped จริงเท่านั้น) ดู client/status.lua
@@ -242,7 +242,7 @@ Config.Status.Cores = {
     stamina = 100, -- แกนสเตมินา
     deadeye = 100, -- แกนเดดอาย
 
-    -- เติมหลอดสเตมินา "ด้านนอก" ให้เต็มตอนเพิ่งเข้าเกม/เพิ่งเปลี่ยนโมเดล (สร้างตัวละคร · เปลี่ยนชุด)
+    -- เติมหลอดสเตมินา "ด้านนอก" ให้เต็มตอนเพิ่งเข้าเกม/เพิ่งเปลี่ยนโมเดล (สร้างตัวละคร / เปลี่ยนชุด)
     -- ped ตัวใหม่ไม่ได้สืบค่าเดิมมา ถ้าไม่เติมให้จะได้สเตมินาไม่เต็มหลอดทั้งที่ยังไม่ได้วิ่งเลย
     -- (เติมเฉพาะตอนเปลี่ยน ped เท่านั้น ไม่ใช่ทุกรอบ ไม่งั้นวิ่งเท่าไหร่ก็ไม่มีวันเหนื่อย)
     staminaOnSpawn = 100,
@@ -266,7 +266,7 @@ Config.Security = {}
 --   'log'  = บันทึกลง console + log sink อย่างเดียว ไม่แตะผู้เล่น (ค่าเริ่มต้น แนะนำ)
 --   'kick' = เตะเมื่อรายงานถึง CSRFFailureThreshold ครั้งภายใน 10 วินาที
 --
--- ⚠️ token ชุดนี้สร้างและตรวจอยู่ฝั่ง client ทั้งหมด server ยืนยันเองไม่ได้
+-- token ชุดนี้สร้างและตรวจอยู่ฝั่ง client ทั้งหมด server ยืนยันเองไม่ได้
 -- จึงเป็นแค่ "สัญญาณเตือน" ไม่ใช่ระบบกันโกง ตั้ง 'kick' แล้วอาจเตะคนที่ NUI
 -- แค่โหลดช้า/สะดุด ได้ด้วย — ค่าเริ่มต้นจึงเป็น 'log'
 Config.Security.CSRFFailurePolicy = 'log'
@@ -308,9 +308,9 @@ Config.Colormap = {}
 Config.Colormap.Enabled = true -- false = ไม่ระบายสีโซนใดเลย (แผนที่กลับไปเป็นสีปกติของเกม)
 Config.Colormap.Debug = false -- true = พิมพ์ hash ของโซนที่ทาสี/ล้างสีลง console ฝั่ง client
 -- Debug = true ยังเปิดคำสั่งช่วยหา hash ให้ด้วย (พิมพ์ใน F8):
---   /zonehash                 → hash ของทุกโซนตรงจุดที่ยืนอยู่ เอาไปใส่ Zones ได้เลย
---   /zonestyle <zone> <style> → ลองทาสีสดๆ ไม่ต้อง restart เช่น /zonestyle 0x3B8DD21A BLIP_STYLE_TURRET_WEAPON
---   /zonereset [zone]         → ล้างโซนเดียว หรือไม่ใส่ zone = ทาใหม่ทั้งหมดตามคอนฟิก
+--   /zonehash                 -> hash ของทุกโซนตรงจุดที่ยืนอยู่ เอาไปใส่ Zones ได้เลย
+--   /zonestyle <zone> <style> -> ลองทาสีสดๆ ไม่ต้อง restart เช่น /zonestyle 0x3B8DD21A BLIP_STYLE_TURRET_WEAPON
+--   /zonereset [zone]         -> ล้างโซนเดียว หรือไม่ใส่ zone = ทาใหม่ทั้งหมดตามคอนฟิก
 
 -- 6 สีเริ่มต้น — ชื่อสีทางซ้ายเป็นแค่ "ชื่อเรียก" ที่เอาไว้อ้างอิงในตาราง Zones ด้านล่าง
 -- ส่วนเฉดจริงมาจาก blip style ของเกมทางขวา อยากได้เฉดอื่นก็เปลี่ยนสตริงขวามือได้เลย

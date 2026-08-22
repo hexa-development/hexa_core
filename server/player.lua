@@ -182,8 +182,7 @@ local function MergeLegacyBankAccounts(PlayerData)
     if not found then return end
 
     money.bank = (tonumber(money.bank) or 0) + merged
-    print(('[hexa_core][MONEY] Merged legacy bank accounts for %s: +%s -> bank = %s')
-        :format(tostring(PlayerData.citizenid), tostring(merged), tostring(money.bank)))
+    Hexa.Log('money Merged legacy bank accounts for %s: +%s -> bank = %s', tostring(PlayerData.citizenid), tostring(merged), tostring(money.bank))
 end
 
 local function applyDefaults(playerData, defaults)
@@ -537,7 +536,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         local current = tonumber(self.PlayerData.money[moneytype]) or 0
         -- เพดานล่างของการหักเงิน: ประเภทที่อยู่ใน DontAllowMinus ห้ามต่ำกว่า 0
         -- ส่วนที่เหลือใช้ MinusLimit ได้ แต่ math.max บีบไม่ให้ต่ำกว่า 0 เสมอ (unconditional)
-        -- เดิม bank/bloodmoney ไม่อยู่ในลิสต์ + MinusLimit = -5000 → RemoveMoney('bank', n) คืน true
+        -- เดิม bank/bloodmoney ไม่อยู่ในลิสต์ + MinusLimit = -5000 -> RemoveMoney('bank', n) คืน true
         -- ทั้งที่ยอดเป็น 0 = ทุกสคริปต์ที่ทำตามสัญญามาตรฐานแจกของฟรีได้ถึง $5,000 ต่อตัวละคร
         local allowMinus = true
         for _, mtype in pairs(HexaCore.Config.Money.DontAllowMinus or {}) do
@@ -916,8 +915,7 @@ function HexaCore.CreateCitizenId()
         local citizenId = DrawCitizenId(prefix, digits + extra)
         if citizenId then
             if extra > 0 then
-                print(('[hexa_core] citizen id pool of %d digits looks full, issued a %d digit id (%s) — raise Config.Player.CitizenIdDigits')
-                    :format(digits, digits + extra, citizenId))
+                Hexa.Log('citizen id pool of %d digits looks full, issued a %d digit id (%s) — raise Config.Player.CitizenIdDigits', digits, digits + extra, citizenId)
             end
             return citizenId
         end
@@ -925,7 +923,7 @@ function HexaCore.CreateCitizenId()
 
     -- practically unreachable: every pool up to digits+4 came back full
     local fallback = prefix .. tostring(os.time())
-    print(('[hexa_core] could not draw a free citizen id, falling back to %s — raise Config.Player.CitizenIdDigits'):format(fallback))
+    Hexa.Log('could not draw a free citizen id, falling back to %s — raise Config.Player.CitizenIdDigits', fallback)
     return fallback
 end
 

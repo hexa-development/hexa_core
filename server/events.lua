@@ -109,7 +109,7 @@ local CLIENT_SETTABLE_META = {
 RegisterNetEvent('HexaCore:Server:SetMetaData', function(meta, data)
     local src = source
     if type(meta) ~= 'string' or not CLIENT_SETTABLE_META[meta] then
-        return print(('[hexa_core][SECURITY] id %s tried to set metadata key %s'):format(src, tostring(meta)))
+        return Hexa.Log('security id %s tried to set metadata key %s', src, tostring(meta))
     end
     if type(data) ~= 'number' and type(data) ~= 'boolean' then return end
     local Player = HexaCore.GetPlayer(src)
@@ -145,13 +145,15 @@ end)
 -- This event is exploitable and should not be used. It has been deprecated, and will be removed soon. function(itemName, amount, slot)
 RegisterNetEvent('HexaCore:Server:RemoveItem', function(itemName, amount)
     local src = source
-    print(string.format('%s triggered HexaCore:Server:RemoveItem by ID %s for %s %s. This event is deprecated due to exploitation, and will be removed soon. Adjust your events accordingly to do this server side with player functions.', GetInvokingResource(), src, amount, itemName))
+    Hexa.Warn('%s triggered the deprecated HexaCore:Server:RemoveItem for id %s (%s x%s) - do this server side with Player.RemoveItem instead',
+        tostring(GetInvokingResource()), src, tostring(itemName), tostring(amount))
 end)
 
 -- This event is exploitable and should not be used. It has been deprecated, and will be removed soon. function(itemName, amount, slot, info)
 RegisterNetEvent('HexaCore:Server:AddItem', function(itemName, amount)
     local src = source
-    print(string.format('%s triggered HexaCore:Server:AddItem by ID %s for %s %s. This event is deprecated due to exploitation, and will be removed soon. Adjust your events accordingly to do this server side with player functions.', GetInvokingResource(), src, amount, itemName))
+    Hexa.Warn('%s triggered the deprecated HexaCore:Server:AddItem for id %s (%s x%s) - do this server side with Player.AddItem instead',
+        tostring(GetInvokingResource()), src, tostring(itemName), tostring(amount))
 end)
 
 -- Non-Chat Command Calling (ex: Hexa-adminmenu)
@@ -177,8 +179,29 @@ end)
 -- Vehicle server-side spawning callback (netId)
 -- use the netid on the client with the NetworkGetEntityFromNetworkId native
 -- convert it to a vehicle via the NetToVeh native
+-- callback นี้ไม่เคยตรวจอะไรเลย ใครก็ยิงได้ไม่จำกัดจำนวน จนถมเซิร์ฟด้วยยานพาหนะได้ในไม่กี่วินาที
+-- กันด้วยสามด่าน: ต้องโหลดตัวละครแล้ว, ตรวจชนิดของอาร์กิวเมนต์, และคูลดาวน์ต่อคน
+local lastVehicleSpawn = {}
+local VEHICLE_SPAWN_COOLDOWN_MS = 3000
+
+AddEventHandler('playerDropped', function() lastVehicleSpawn[source] = nil end)
+
 HexaCore.CreateCallback('HexaCore:Server:SpawnVehicle', function(source, cb, model, coords, warp)
+    if not HexaCore.GetPlayer(source) then return cb(nil) end
+
+    if type(model) ~= 'string' and type(model) ~= 'number' then
+        Hexa.Warn('id %s asked to spawn a vehicle with a %s model argument', tostring(source), type(model))
+        return cb(nil)
+    end
+
+    local now = GetGameTimer()
+    if lastVehicleSpawn[source] and (now - lastVehicleSpawn[source]) < VEHICLE_SPAWN_COOLDOWN_MS then
+        return cb(nil)
+    end
+    lastVehicleSpawn[source] = now
+
     local veh = HexaCore.SpawnVehicle(source, model, coords, warp)
+    if not veh or not DoesEntityExist(veh) then return cb(nil) end
     cb(NetworkGetNetworkIdFromEntity(veh))
 end)
 
@@ -221,16 +244,14 @@ RegisterNetEvent('HexaCore:Server:ReportCSRFFailure', function()
 
     -- log ครั้งแรกของ window เท่านั้น กันไม่ให้การยิงรัวกลายเป็นการถล่ม console
     if entry.count == 1 then
-        print(('[hexa_core][WARN][SECURITY] NUI CSRF token mismatch reported by client | Source: %s | Name: %s | Policy: %s')
-            :format(tostring(src), tostring(GetPlayerName(src)), policy))
+        Hexa.Warn('security NUI CSRF token mismatch reported by client | Source: %s | Name: %s | Policy: %s', tostring(src), tostring(GetPlayerName(src)), policy)
         TriggerEvent('hexa_log:server:CreateLog', 'anticheat', 'CSRF Mismatch Reported', 'orange',
             ('**%s** (id: %s) reported an NUI CSRF token mismatch'):format(tostring(GetPlayerName(src)), tostring(src)))
     end
 
     if policy == 'kick' and entry.count >= threshold then
         csrfReports[src] = nil
-        print(('[hexa_core][WARN][SECURITY] Dropping player after repeated CSRF mismatches | Source: %s | Count: %d')
-            :format(tostring(src), entry.count))
+        Hexa.Warn('security Dropping player after repeated CSRF mismatches | Source: %s | Count: %d', tostring(src), entry.count)
         DropPlayer(src, 'CSRF validation failed')
     end
 end)
