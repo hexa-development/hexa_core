@@ -1,4 +1,4 @@
-﻿-- login + spawn อัตโนมัติ ไม่มีหน้าจอเลือกตัวละคร ไม่เจอตัวละครก็สร้างใหม่ให้เลย ดู docs guide/player-object
+-- login + spawn อัตโนมัติ ไม่มีหน้าจอเลือกตัวละคร ไม่เจอตัวละครก็สร้างใหม่ให้เลย ดู docs guide/player-object
 
 local spawning = {} -- กันการยิง RequestSpawn ซ้ำระหว่างที่กำลัง login อยู่
 

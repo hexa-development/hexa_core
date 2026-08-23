@@ -1,4 +1,4 @@
-﻿-- สถานะร่างกาย 0-100 ใน metadata นับเวลาฝั่ง server เพราะฝั่ง client แค่หยุด thread เดียวก็อมตะ ดู docs api/exports
+-- สถานะร่างกาย 0-100 ใน metadata นับเวลาฝั่ง server เพราะฝั่ง client แค่หยุด thread เดียวก็อมตะ ดู docs api/exports
 
 -- ชื่อสถานะทั้งหมดมาจาก Config.Status.Keys ผ่าน shared/main.lua เพิ่มสถานะใหม่แก้ที่คอนฟิกที่เดียว
 local StatusKeys = Shared.StatusKeys

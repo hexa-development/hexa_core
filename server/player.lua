@@ -1,4 +1,4 @@
-﻿Core.Players = {}
+Core.Players = {}
 Core.Player = {}
 
 -- โหลดข้อมูลผู้เล่นตอน login หรือเติมค่าเริ่มต้น แก้ตรงนี้ผิดพังทั้งระบบ (docs guide/player-object)

@@ -1,4 +1,4 @@
-﻿Core.Commands = {}
+Core.Commands = {}
 Core.Commands.List = {}
 Core.Commands.IgnoreList = { -- ระดับที่ไม่ต้องสร้าง ace รายคำสั่ง
     ['admin'] = true,          -- admin ใช้ได้ทุกคำสั่งอยู่แล้ว (add_ace hexacore.admin command allow ใน permissions.cfg)

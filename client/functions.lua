@@ -1,4 +1,4 @@
-﻿-- ห้ามประกาศตาราง Functions ซ้ำที่นี่ จะล้าง metatable มิเรอร์ของ main.lua ทิ้ง จน bridge ที่ยกด้วย pairs() ได้ศูนย์ตัว
+-- ห้ามประกาศตาราง Functions ซ้ำที่นี่ จะล้าง metatable มิเรอร์ของ main.lua ทิ้ง จน bridge ที่ยกด้วย pairs() ได้ศูนย์ตัว
 
 -- Asset loading helpers (native replacements for ox_lib)
 

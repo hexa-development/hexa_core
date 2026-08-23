@@ -1,4 +1,4 @@
-﻿-- Helper tables to map money items - do not change
+-- Helper tables to map money items - do not change
 
 local moneyItems = {
     cash = {

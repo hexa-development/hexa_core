@@ -1,4 +1,4 @@
-﻿-- ห้ามประกาศตาราง Functions ซ้ำตรงนี้ - main.lua สร้าง mirror ไว้แล้ว ประกาศซ้ำ = ล้าง mirror จน bridge ที่ใช้ pairs() ได้ศูนย์ตัว
+-- ห้ามประกาศตาราง Functions ซ้ำตรงนี้ - main.lua สร้าง mirror ไว้แล้ว ประกาศซ้ำ = ล้าง mirror จน bridge ที่ใช้ pairs() ได้ศูนย์ตัว
 Core.Player_Buckets = {}
 Core.Entity_Buckets = {}
 Core.UsableItems = {}

@@ -1,4 +1,4 @@
-﻿-- Notify: ส่งต่อ hexa_notify (ไม่มีก็ถอยไป chat) — ห้าม hexa_notify ฟัง HexaCore:Notify เอง ไม่งั้นแจ้งเตือนซ้ำสองครั้ง
+-- Notify: ส่งต่อ hexa_notify (ไม่มีก็ถอยไป chat) — ห้าม hexa_notify ฟัง HexaCore:Notify เอง ไม่งั้นแจ้งเตือนซ้ำสองครั้ง
 local notifyColors = {
     error = { 214, 66, 66 },
     success = { 66, 214, 111 },

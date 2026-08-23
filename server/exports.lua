@@ -1,4 +1,4 @@
-﻿-- Add or change (a) method(s) in the Core.Functions table
+-- Add or change (a) method(s) in the Core.Functions table
 local function SetMethod(methodName, handler)
     if type(methodName) ~= 'string' then
         return false, 'invalid_method_name'

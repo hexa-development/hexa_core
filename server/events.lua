@@ -1,4 +1,4 @@
-﻿-- Event Handler
+-- Event Handler
 
 AddEventHandler('chatMessage', function(_, _, message)
     if string.sub(message, 1, 1) == '/' then

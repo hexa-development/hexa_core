@@ -1,4 +1,4 @@
-﻿local Core = exports['hexa_core']:GetCoreObject()
+local Core = exports['hexa_core']:GetCoreObject()
 
 -- เปิด/ปิดความสามารถ Eagle Eye (Dead Eye ของสัตว์ - มองเห็นรอยเท้า/กลิ่น)
 local function EnableEagleEye(enable)
