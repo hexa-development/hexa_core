@@ -105,9 +105,8 @@ AddEventHandler('HexaCore:UpdatePlayer', function()
 end)
 
 -- ไวต์ลิสต์เท่านั้น คีย์อื่น (injail / rep / criminalrecord ฯลฯ) ถ้าเปิดให้ client เขียน = เคลียร์คุก/ปั้ม rep เองได้
-local CLIENT_SETTABLE_META = {
-    hunger = true, thirst = true, cleanliness = true, stress = true,
-}
+-- ตรงกับ Config.Status.Keys เสมอ สถานะที่เพิ่งเพิ่มจะได้เขียนได้เหมือนสี่ตัวเดิมโดยไม่ต้องมาแก้ไฟล์นี้
+local CLIENT_SETTABLE_META = Shared.IsStatusKey
 
 -- ต้องเป็น AddEventHandler ไม่ใช่ RegisterNetEvent ไม่งั้น client ตรึงหิว/กระหายของตัวเองได้ ลบล้างรอบลดค่าที่ย้ายมาฝั่ง server ทั้งหมด
 AddEventHandler('HexaCore:Server:SetMetaData', function(meta, data)

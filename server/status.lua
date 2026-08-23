@@ -1,10 +1,13 @@
 ﻿-- สถานะร่างกาย 0-100 ใน metadata นับเวลาฝั่ง server เพราะฝั่ง client แค่หยุด thread เดียวก็อมตะ ดู docs api/exports
 
-local StatusKeys = { 'hunger', 'thirst', 'cleanliness', 'stress' }
+-- ชื่อสถานะทั้งหมดมาจาก Config.Status.Keys ผ่าน shared/main.lua เพิ่มสถานะใหม่แก้ที่คอนฟิกที่เดียว
+local StatusKeys = Shared.StatusKeys
 
 --- ไวต์ลิสต์คีย์ กัน export ถูกใช้ไปเขียน metadata ช่องอื่นอย่าง injail / rep / criminalrecord
-local IsStatusKey = {}
-for _, key in ipairs(StatusKeys) do IsStatusKey[key] = true end
+local IsStatusKey = Shared.IsStatusKey
+
+--- ข้อความช่วยเหลือของคำสั่งต้องเดินตามคอนฟิกด้วย ไม่งั้นเพิ่มสถานะแล้วแอดมินยังเห็นแค่สี่ชื่อเดิม
+local KeyList = table.concat(StatusKeys, ' / ')
 
 local function statusConfig()
     return Core.Config and Core.Config.Status or nil
@@ -23,7 +26,8 @@ local function readStatus(src)
     local metadata = ply.PlayerData.metadata or {}
     local out = {}
     for _, key in ipairs(StatusKeys) do
-        out[key] = clamp(metadata[key])
+        -- สถานะที่เพิ่งถูกเพิ่มในคอนฟิกยังไม่มีใน metadata ของตัวละครเก่า ต้องถอยไปค่าเริ่มต้น ไม่ใช่ 0 ที่แปลว่าหิวจัด
+        out[key] = clamp(metadata[key] ~= nil and metadata[key] or Shared.StatusDefault(key))
     end
     return out
 end
@@ -62,7 +66,7 @@ local function writeStatus(src, values, quiet)
     local metadata = ply.PlayerData.metadata or {}
     local current = {}
     for _, key in ipairs(StatusKeys) do
-        current[key] = applied[key] or clamp(metadata[key])
+        current[key] = applied[key] or clamp(metadata[key] ~= nil and metadata[key] or Shared.StatusDefault(key))
     end
 
     TriggerClientEvent('HexaCore:Client:UpdateNeeds', src, current)
@@ -100,7 +104,7 @@ CreateThread(function()
                         for _, key in ipairs(StatusKeys) do
                             local rate = tonumber(cfg.Drain[key])
                             if rate and rate ~= 0 then
-                                next_[key] = clamp((tonumber(metadata[key]) or 100) - rate)
+                                next_[key] = clamp((tonumber(metadata[key]) or Shared.StatusDefault(key)) - rate)
                             end
                         end
                         if next(next_) then writeStatus(src, next_, true) end
@@ -162,7 +166,7 @@ end)
 
 Core.Commands.Add('setstatus', 'ตั้งค่าสถานะร่างกายของผู้เล่น', {
     { name = 'id',    help = 'ไอดีผู้เล่น' },
-    { name = 'key',   help = 'hunger / thirst / cleanliness / stress' },
+    { name = 'key',   help = KeyList },
     { name = 'value', help = 'ค่า 0-100' },
 }, true, function(source, args)
     local target = tonumber(args[1])
@@ -170,7 +174,7 @@ Core.Commands.Add('setstatus', 'ตั้งค่าสถานะร่าง
     local value = tonumber(args[3])
 
     if not target or not IsStatusKey[key] or not value then
-        return Core.Notify(source, { title = 'ใช้: /setstatus [id] [hunger|thirst|cleanliness|stress] [0-100]', type = 'error', duration = 5000 })
+        return Core.Notify(source, { title = ('ใช้: /setstatus [id] [%s] [0-100]'):format(table.concat(StatusKeys, '|')), type = 'error', duration = 5000 })
     end
 
     if not writeStatus(target, { [key] = value }) then

@@ -5,6 +5,17 @@ Core.Player = {}
 
 local resourceName = GetCurrentResourceName()
 
+-- คีย์ที่มิเรอร์ลง statebag: สถานะทั้งหมดจากคอนฟิก บวก health ที่ไม่ใช่สถานะแต่ต้องซิงก์ไปด้วย
+local STATE_BAG_KEYS = { 'health' }
+for _, key in ipairs(Shared.StatusKeys) do STATE_BAG_KEYS[#STATE_BAG_KEYS + 1] = key end
+
+-- คอลัมน์ status แบบย่อสไตล์ ESX เขียนตามคอนฟิก จะได้ไม่ตกหล่นเวลามีสถานะใหม่
+local function buildStatusColumn(metadata)
+    local out = {}
+    for _, key in ipairs(Shared.StatusKeys) do out[key] = metadata[key] end
+    return out
+end
+
 -- ตัวแปลงแถว users (สไตล์ ESX) กับ PlayerData: DB เก็บคอลัมน์แยกแต่ในเกมใช้โครงเดิม โค้ดส่วนอื่นจึงไม่ต้องแก้
 
 -- ตัวละครที่อ่านคอลัมน์ inventory/loadout ไม่ออก คีย์ด้วย citizenid เพราะต้องคุมทั้งตัวที่ออนไลน์และ offline object ที่ไม่มี source
@@ -64,12 +75,7 @@ local function BuildUserRow(PlayerData, coords)
         loadout = json.encode(Core.Storage.EncodeLoadout(PlayerData.items)),
         metadata = json.encode(metadata),
         -- คอลัมน์ status แบบย่อสไตล์ ESX (เผื่อเครื่องมือภายนอกอ่าน)
-        status = json.encode({
-            hunger = metadata.hunger,
-            thirst = metadata.thirst,
-            cleanliness = metadata.cleanliness,
-            stress = metadata.stress,
-        }),
+        status = json.encode(buildStatusColumn(metadata)),
         is_dead = metadata.isdead and 1 or 0,
     }
 end
@@ -396,7 +402,8 @@ function Core.CreatePlayer(PlayerData, Offline)
     function self.SetMetaData(meta, val)
         local function validateData(key, value)
             -- stress เคยหลุดจากลิสต์นี้ ทั้งที่เป็นค่า 0-100 เหมือนกัน ค่าจึงทะลุ 100 แล้วแถบใน hexa_status ล้นกรอบ
-            if key == 'hunger' or key == 'thirst' or key == 'cleanliness' or key == 'stress' then
+            -- ตอนนี้ไล่ตาม Config.Status.Keys จึงหลุดอีกไม่ได้
+            if Shared.IsStatusKey[key] then
                 value = math.min(math.max(tonumber(value) or 0, 0), 100)
             end
 
@@ -586,10 +593,9 @@ function Core.CreatePlayer(PlayerData, Offline)
 
     function self.PullStateBags()
         local metadata = {}
-        local keys = { "hunger", "thirst", "cleanliness", "stress", "health" }
-    
+
         local state = Player(self.PlayerData.source).state
-        for _, key in ipairs(keys) do
+        for _, key in ipairs(STATE_BAG_KEYS) do
             if state[key] ~= nil then
                 metadata[key] = state[key]
             end
@@ -608,10 +614,9 @@ function Core.CreatePlayer(PlayerData, Offline)
 
     function self.PushStateBags()
         local metadata = self.PlayerData.metadata
-        local keys = { "hunger", "thirst", "cleanliness", "stress", "health" }
-    
+
         local state = Player(self.PlayerData.source).state
-        for _, key in ipairs(keys) do
+        for _, key in ipairs(STATE_BAG_KEYS) do
             if metadata[key] ~= nil then
                 state[key] = metadata[key]
             end

@@ -1,9 +1,14 @@
 -- hexa_core — สถานะร่างกาย (client): server นับเวลา/คำนวณให้ ที่นี่แค่หักเลือดตอนหิวจัด (ต้องแตะ ped) และแคชค่าให้ HUD
 
-local StatusKeys = { 'hunger', 'thirst', 'cleanliness', 'stress' }
+-- ชื่อสถานะทั้งหมดมาจาก Config.Status.Keys ผ่าน shared/main.lua เพิ่มสถานะใหม่แก้ที่คอนฟิกที่เดียว
+local StatusKeys = Shared.StatusKeys
 
---- ค่าล่าสุดจาก server — เริ่มที่ 100 ไว้ก่อน กัน HUD วาดแถบว่างช่วงก่อน UpdateNeeds ก้อนแรกมาถึง
-local status = { hunger = 100, thirst = 100, cleanliness = 100, stress = 0 }
+--- ค่าล่าสุดจาก server — เติมค่าเริ่มต้นไว้ก่อน กัน HUD วาดแถบว่างช่วงก่อน UpdateNeeds ก้อนแรกมาถึง
+local status = {}
+for _, key in ipairs(StatusKeys) do status[key] = Shared.StatusDefault(key) end
+
+-- คอนฟิกเก่าที่ยังไม่มี Config.Status.Damage.keys ต้องได้พฤติกรรมเดิมคือหิวจัด/กระหายจัดแล้วเสียเลือด
+local DEFAULT_DAMAGE_KEYS = { 'hunger', 'thirst' }
 
 local function clamp(value)
     return math.min(math.max(tonumber(value) or 0, 0), 100)
@@ -59,7 +64,17 @@ CreateThread(function()
 
         if cfg and cfg.Enabled and damage and damage.enabled and LocalPlayer.state.isLoggedIn then
             local threshold = tonumber(damage.threshold) or 0
-            local starving = status.hunger <= threshold or status.thirst <= threshold
+
+            -- สถานะที่ทำให้เสียเลือดมาจากคอนฟิก ไม่ได้ผูกกับหิว/กระหายอีกแล้ว
+            local damageKeys = type(damage.keys) == 'table' and damage.keys or DEFAULT_DAMAGE_KEYS
+            local starving = false
+            for _, key in ipairs(damageKeys) do
+                -- เช็คกับไวต์ลิสต์ด้วย ชื่อที่พิมพ์ผิดในคอนฟิกจะได้ไม่กลายเป็น nil <= threshold แล้วพัง
+                if Shared.IsStatusKey[key] and (tonumber(status[key]) or 0) <= threshold then
+                    starving = true
+                    break
+                end
+            end
 
             if starving then
                 local ped = PlayerPedId()
@@ -157,12 +172,11 @@ end)
 
 exports('GetStatus', function(key)
     if key then return status[key] end
-    return {
-        hunger      = status.hunger,
-        thirst      = status.thirst,
-        cleanliness = status.cleanliness,
-        stress      = status.stress,
-    }
+
+    -- คืนสำเนา ไม่ใช่ตารางจริง สคริปต์อื่นจะได้เขียนทับค่าที่ HUD อ่านอยู่ไม่ได้
+    local out = {}
+    for _, k in ipairs(StatusKeys) do out[k] = status[k] end
+    return out
 end)
 
 --- เติมแกน+หลอดสเตมินาเดี๋ยวนี้ (ส่ง false = เฉพาะแกน) สำหรับสคริปต์อื่นเรียกหลังชุบ/เปลี่ยนโมเดล

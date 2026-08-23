@@ -4,6 +4,36 @@ Shared = Shared or {}
 Shared.Jobs = {}
 Shared.Items = {}
 
+-- รายชื่อสถานะร่างกายมาจาก Config.Status.Keys ที่เดียว ทุกไฟล์อ่านสองตัวนี้แทนการถือลิสต์ฮาร์ดโค้ดของตัวเอง
+-- สร้างตอนโหลดได้เพราะ config.lua เป็น shared_script ตัวแรกใน fxmanifest จึงมาก่อนไฟล์นี้เสมอ
+Shared.StatusKeys = {}   -- เรียงตามลำดับในคอนฟิก ใช้ตอนต้องวนให้ครบ
+Shared.IsStatusKey = {}  -- ไวต์ลิสต์ ใช้ตอนต้องเช็คว่าคีย์ที่รับมาเป็นสถานะจริงไหม
+
+do
+    local configured = Config and Config.Status and Config.Status.Keys
+    -- คอนฟิกเก่าที่ยังไม่มีคีย์นี้ต้องได้สี่ตัวเดิมไป ไม่ใช่ลิสต์ว่างที่ทำให้ระบบสถานะเงียบไปทั้งระบบ
+    if type(configured) ~= 'table' or #configured == 0 then
+        configured = { 'hunger', 'thirst', 'cleanliness', 'stress' }
+    end
+
+    for _, key in ipairs(configured) do
+        key = tostring(key):lower()
+        -- ชื่อซ้ำในลิสต์จะทำให้ทุกลูปวนคีย์นั้นสองรอบ ตัดทิ้งตั้งแต่ตอนสร้าง
+        if key ~= '' and not Shared.IsStatusKey[key] then
+            Shared.IsStatusKey[key] = true
+            Shared.StatusKeys[#Shared.StatusKeys + 1] = key
+        end
+    end
+end
+
+--- ค่าเริ่มต้นของสถานะหนึ่งช่อง อ่านจาก PlayerDefaults ที่เดียว คีย์ใหม่ที่ลืมตั้งค่าจะได้ไม่เริ่มที่ 0 แล้วหิวตายทันที
+---@param key string
+---@return number
+function Shared.StatusDefault(key)
+    local defaults = Config and Config.Player and Config.Player.PlayerDefaults and Config.Player.PlayerDefaults.metadata
+    return (defaults and tonumber(defaults[key])) or 100
+end
+
 local StringCharset = {}
 local NumberCharset = {}
 

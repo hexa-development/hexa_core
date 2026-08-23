@@ -177,6 +177,12 @@ Config.Status = {}
 
 Config.Status.Enabled = true -- false = ปิดระบบทั้งหมด (ค่าใน metadata ค้างไว้เฉยๆ ไม่ลดเอง ไม่หักเลือด)
 
+-- รายชื่อสถานะทั้งหมดของเซิร์ฟ เพิ่มชื่อลงลิสต์นี้แล้วทั้งเส้นทางรู้จักเอง: เซฟลง DB, statebag, ไวต์ลิสต์ที่ client เขียนได้,
+-- คำสั่ง /setstatus, exports GetStatus/SetStatus/AddStatus/RemoveStatus และ HUD ฝั่ง client
+-- เพิ่มคีย์ใหม่แล้วต้องทำอีกสองที่: ตั้งค่าเริ่มต้นใน Config.Player.PlayerDefaults.metadata (ไม่งั้นตัวละครใหม่เริ่มที่ 100)
+-- และใส่อัตราลดใน Config.Status.Drain ข้างล่าง (ไม่ใส่ = ไม่ลดเอง ให้สคริปต์อื่นเป็นคนขยับ)
+Config.Status.Keys = { 'hunger', 'thirst', 'cleanliness', 'stress' }
+
 -- ทุกกี่นาทีถึงจะลดค่าหนึ่งรอบ
 Config.Status.TickInterval = 5
 
@@ -191,6 +197,7 @@ Config.Status.Drain = {
 -- หักเลือดเมื่อหิวจัด/กระหายจัด (ค่าแตะ 0)
 Config.Status.Damage = {
     enabled   = true,
+    keys      = { 'hunger', 'thirst' }, -- สถานะที่แตะพื้นแล้วหักเลือด (ต้องเป็นชื่อที่มีใน Config.Status.Keys)
     threshold = 0,     -- ค่าที่ถือว่า "จัด" (0 = ต้องหมดเกลี้ยงก่อนถึงจะเริ่มหัก)
     interval  = 10000, -- ทุกกี่มิลลิวินาทีถึงจะหักหนึ่งครั้ง
     amount    = 5,     -- หักครั้งละกี่หน่วยเลือด
