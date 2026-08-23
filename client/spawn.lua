@@ -118,6 +118,13 @@ RegisterNetEvent('HexaCore:Client:SpawnPlayer', function(pos, health, gender)
     if spawned then return end
     spawned = true
 
+    -- pos มาจากคอลัมน์ position ที่ json.decode มา ถ้าแถวเสียรูปจะอ่าน x/y/z ไม่ได้ แล้ว SetEntityCoordsNoOffset จะ error กลางทางจนผู้เล่นค้างจอดำถาวร
+    local okPos, px, py, pz = pcall(function() return pos.x, pos.y, pos.z end)
+    if not okPos or type(px) ~= 'number' or type(py) ~= 'number' or type(pz) ~= 'number' then
+        Hexa.Warn('SpawnPlayer received an unusable position, falling back to Config.DefaultSpawn')
+        pos = Config.DefaultSpawn
+    end
+
     local ped = PlayerPedId()
     DoScreenFadeOut(0)
 
