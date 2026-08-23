@@ -6,6 +6,9 @@ HexaCore = Core
 
 Core.Config = Config
 Core.Shared = Shared
+
+-- ชั้นคุยฐานข้อมูลจาก server/db.lua แขวนไว้ให้ resource อื่นหยิบผ่าน GetCoreObject ได้โดยไม่ต้อง include lib ของ oxmysql เอง
+Core.Db = Db
 Core.ClientCallbacks = {}
 Core.ServerCallbacks = {}
 

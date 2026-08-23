@@ -2,7 +2,7 @@
 
 local function loadJobsFromDatabase()
     -- ต้องห่อ pcall คิวรีล้มแล้วเธรดตายเงียบ = Shared.Jobs ค้างว่าง ทุกคนตกงานโดยไม่มีอะไรฟ้อง
-    local ok, jobRows = pcall(MySQL.query.await, 'SELECT * FROM jobs')
+    local ok, jobRows = pcall(Db.Query, 'SELECT * FROM jobs')
     if not ok then
         Hexa.Error('could not read the jobs table - every player will load as unemployed. %s', tostring(jobRows))
         return
@@ -12,7 +12,7 @@ local function loadJobsFromDatabase()
         return
     end
 
-    local gradesOk, gradeRows = pcall(MySQL.query.await, 'SELECT * FROM job_grades')
+    local gradesOk, gradeRows = pcall(Db.Query, 'SELECT * FROM job_grades')
     if not gradesOk then
         Hexa.Error('could not read job_grades - every job will load with no grades. %s', tostring(gradeRows))
         gradeRows = {}
@@ -63,7 +63,7 @@ local function loadJobsFromDatabase()
     TriggerEvent('HexaCore:Server:UpdateObject')
 end
 
-MySQL.ready(function()
+Db.Ready(function()
     -- รอ installer สร้าง/seed ตาราง jobs ให้เสร็จก่อนค่อยโหลด
     if AwaitSchemaReady then AwaitSchemaReady(15000) end
     loadJobsFromDatabase()

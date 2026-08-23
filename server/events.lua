@@ -18,15 +18,13 @@ AddEventHandler('playerDropped', function(reason)
     Core.Players[src] = nil
 end)
 
-local readyFunction = MySQL.ready
-local databaseConnected = readyFunction == nil
-if readyFunction ~= nil then
-    MySQL.ready(function()
-        -- รอ installer สร้างตาราง users ก่อน (weight/slots ไม่ได้เก็บใน DB แล้ว ใช้ค่าจาก Config.Player.PlayerDefaults)
-        if AwaitSchemaReady then AwaitSchemaReady(15000) end
-        databaseConnected = true
-    end)
-end
+-- ด่านกัน MySQL หายไปไม่จำเป็นอีก Db มาพร้อม resource เสมอ
+local databaseConnected = false
+Db.Ready(function()
+    -- รอ installer สร้างตาราง users ก่อน (weight/slots ไม่ได้เก็บใน DB แล้ว ใช้ค่าจาก Config.Player.PlayerDefaults)
+    if AwaitSchemaReady then AwaitSchemaReady(15000) end
+    databaseConnected = true
+end)
 
 -- Player Connecting
 local function onPlayerConnecting(name, _, deferrals)

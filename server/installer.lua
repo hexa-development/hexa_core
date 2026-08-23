@@ -73,7 +73,7 @@ local USERS_PK_MIGRATION = 'ALTER TABLE `users` DROP PRIMARY KEY, ADD PRIMARY KE
 
 -- ถามสคีมาว่า PK ของ users เป็น citizenid คอลัมน์เดียวหรือยัง จะได้ข้าม ALTER ที่ไม่มีอะไรให้ทำ
 local function usersPrimaryKeyIsCitizenId()
-    local rows = MySQL.query.await(
+    local rows = Db.Query(
         "SELECT `COLUMN_NAME` AS `col` FROM `information_schema`.`STATISTICS`" ..
         " WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'users' AND `INDEX_NAME` = 'PRIMARY'" ..
         " ORDER BY `SEQ_IN_INDEX`"
@@ -95,7 +95,7 @@ local function migrateUsersPrimaryKey()
 
     printLog('warning', 'Migrating the users primary key to citizenid - this rebuilds the table once and may take a while.')
     local done, err = pcall(function()
-        MySQL.query.await(USERS_PK_MIGRATION)
+        Db.Query(USERS_PK_MIGRATION)
     end)
     if not done and not isBenign(err) then
         printLog('error', ('Auto-install statement failed: %s'):format(err))
@@ -122,7 +122,7 @@ local function runInstall()
     local failed = migrateUsersPrimaryKey()
     for _, statement in ipairs(statements) do
         local ok, err = pcall(function()
-            MySQL.query.await(statement)
+            Db.Query(statement)
         end)
         if not ok and not isBenign(err) then
             failed = failed + 1
@@ -138,7 +138,7 @@ local function runInstall()
     end
 end
 
-MySQL.ready(function()
+Db.Ready(function()
     runInstall()
     -- ปล่อยคนที่รออยู่เสมอแม้บางคำสั่งพัง เพราะแฟล็กค้างจะบล็อกการเข้าเซิร์ฟเวอร์ตลอดไป
     schemaReady = true

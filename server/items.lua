@@ -73,7 +73,7 @@ end
 
 local function loadItemsFromDatabase()
     -- เหตุผลเดียวกับ jobs: คิวรีล้มแล้วเงียบ = ผู้เล่นเสียของทั้งกระเป๋าเพราะ LoadInventory ตัดของที่ไม่รู้จักทิ้ง
-    local ok, rows = pcall(MySQL.query.await, 'SELECT * FROM items')
+    local ok, rows = pcall(Db.Query, 'SELECT * FROM items')
     if not ok then
         Hexa.Error('could not read the items table - only weapons will be registered, so unknown items get dropped from inventories. %s', tostring(rows))
         rows = nil
@@ -101,7 +101,7 @@ local function loadItemsFromDatabase()
     TriggerEvent('HexaCore:Server:UpdateObject')
 end
 
-MySQL.ready(function()
+Db.Ready(function()
     -- รอ installer สร้าง/seed ตาราง items ให้เสร็จก่อนค่อยโหลด
     if AwaitSchemaReady then AwaitSchemaReady(15000) end
     loadItemsFromDatabase()

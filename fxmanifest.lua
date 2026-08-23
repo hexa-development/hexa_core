@@ -40,7 +40,8 @@ client_scripts {
 }
 
 server_scripts {
-    '@oxmysql/lib/MySQL.lua',
+    -- ชั้นคุย oxmysql ผ่าน exports ต้องมาก่อน installer.lua ที่ยิงคิวรีตั้งแต่บูต
+    'server/db.lua',
     -- สร้างตารางฐานข้อมูลจาก install.sql ให้อัตโนมัติตอนเริ่ม
     'server/installer.lua',
     'server/main.lua',

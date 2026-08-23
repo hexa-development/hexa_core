@@ -93,7 +93,7 @@ function Core.LoginPlayer(source, citizenid, newData)
     if source and source ~= '' then
         if citizenid then
             local license = Core.GetIdentifier(source)
-            local row = MySQL.prepare.await('SELECT * FROM users WHERE citizenid = ?', { citizenid })
+            local row = Db.Prepare('SELECT * FROM users WHERE citizenid = ?', { citizenid })
             if row and license == row.identifier then
                 local data = UserRowToPlayerData(row)
                 -- ต้องล้าง isdead ตั้งแต่ก่อนสร้างตัวผู้เล่น เพราะเซฟรอบแรกใน CreatePlayer เขียน is_dead=1 ลง DB ไปก่อนที่บล็อกล่างจะได้ล้าง
@@ -122,7 +122,7 @@ end
 
 function Core.GetOfflinePlayerByCitizenId(citizenid)
     if citizenid then
-        local row = MySQL.prepare.await('SELECT * FROM users WHERE citizenid = ?', { citizenid })
+        local row = Db.Prepare('SELECT * FROM users WHERE citizenid = ?', { citizenid })
         if row then
             return Core.LoadPlayer(nil, UserRowToPlayerData(row))
         end
@@ -144,7 +144,7 @@ end
 
 function Core.GetOfflinePlayerByLicense(license)
     if license then
-        local row = MySQL.prepare.await('SELECT * FROM users WHERE identifier = ?', { license })
+        local row = Db.Prepare('SELECT * FROM users WHERE identifier = ?', { license })
         if row then
             return Core.LoadPlayer(nil, UserRowToPlayerData(row))
         end
@@ -687,7 +687,7 @@ function Core.SavePlayer(source, skipPosition)
         -- ธงถูกปิดก่อนเขียน ไม่ใช่หลังเขียน เพราะการเขียนเป็นแบบไม่รอผล ถ้าปิดทีหลังจะไปลบธงที่เพิ่งถูกปักใหม่ระหว่างรอ
         Player.Dirty = false
 
-        MySQL.insert(upsertFor(PlayerData), BuildUserRow(PlayerData, pcoords), function(insertId)
+        Db.InsertAsync(upsertFor(PlayerData), BuildUserRow(PlayerData, pcoords), function(insertId)
             -- เดิมพิมพ์ว่าสำเร็จตั้งแต่ยังไม่ได้เขียน และพิมพ์เหมือนกันหมดไม่ว่าจะสำเร็จหรือไม่
             if insertId == nil then
                 Player.Dirty = true
@@ -705,9 +705,9 @@ end
 
 function Core.SaveOfflinePlayer(PlayerData)
     if PlayerData then
-        MySQL.insert(upsertFor(PlayerData), BuildUserRow(PlayerData))
+        Db.InsertAsync(upsertFor(PlayerData), BuildUserRow(PlayerData))
         if GetResourceState('hexa_inventory') == 'started' then exports['hexa_inventory']:SaveInventory(PlayerData, true) end
-        -- log บรรทัดนี้ throw ได้ทั้งที่ MySQL.insert ข้างบนลงไปแล้ว ผู้เรียกเลยเห็นว่าล้มเหลวทั้งที่เงินเข้าจริง
+        -- log บรรทัดนี้ throw ได้ทั้งที่ Db.InsertAsync ข้างบนลงไปแล้ว ผู้เรียกเลยเห็นว่าล้มเหลวทั้งที่เงินเข้าจริง
         Hexa.Debug('saved offline character %s', tostring(PlayerData.name or PlayerData.citizenid))
     else
         Hexa.Error('SaveOfflinePlayer called with no player data')
@@ -723,7 +723,7 @@ local playertables = { -- เพิ่มตารางที่อ้างอ
 
 function Core.DeleteCharacter(source, citizenid)
     local license = Core.GetIdentifier(source)
-    local result = MySQL.scalar.await('SELECT identifier FROM users WHERE citizenid = ?', { citizenid })
+    local result = Db.Scalar('SELECT identifier FROM users WHERE citizenid = ?', { citizenid })
     if license == result then
         local query = 'DELETE FROM %s WHERE citizenid = ?'
         local tableCount = #playertables
@@ -737,7 +737,7 @@ function Core.DeleteCharacter(source, citizenid)
         -- แถวหายแล้ว ธง items อ่านไม่ออกของ citizenid นี้ต้องหายตาม ไม่งั้นตัวละครใหม่ที่บังเอิญได้ id เดิมจะถูกกันไม่ให้เซฟของ
         itemsUnreadable[citizenid] = nil
 
-        MySQL.transaction(queries, function(result2)
+        Db.TransactionAsync(queries, function(result2)
             if result2 then
                 TriggerEvent('hexa_log:server:CreateLog', 'joinleave', 'Character Deleted', 'red', '**' .. GetPlayerName(source) .. '** ' .. license .. ' deleted **' .. citizenid .. '**..')
             end
@@ -749,7 +749,7 @@ function Core.DeleteCharacter(source, citizenid)
 end
 
 function Core.ForceDeleteCharacter(citizenid)
-    local result = MySQL.scalar.await('SELECT identifier FROM users WHERE citizenid = ?', { citizenid })
+    local result = Db.Scalar('SELECT identifier FROM users WHERE citizenid = ?', { citizenid })
     if result then
         local query = 'DELETE FROM %s WHERE citizenid = ?'
         local tableCount = #playertables
@@ -766,7 +766,7 @@ function Core.ForceDeleteCharacter(citizenid)
 
         itemsUnreadable[citizenid] = nil
 
-        MySQL.transaction(queries, function(result2)
+        Db.TransactionAsync(queries, function(result2)
             if result2 then
                 TriggerEvent('hexa_log:server:CreateLog', 'joinleave', 'Character Force Deleted', 'red', 'Character **' .. citizenid .. '** got deleted')
             end
@@ -837,7 +837,7 @@ local function DrawCitizenId(prefix, digits)
         local number = math.random(0, pool - 1)
         if not IsCitizenIdLocked(number) then
             local citizenId = prefix .. string.format(format, number)
-            local taken = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE citizenid = ?) AS uniqueCheck', { citizenId })
+            local taken = Db.Prepare('SELECT EXISTS(SELECT 1 FROM users WHERE citizenid = ?) AS uniqueCheck', { citizenId })
             if taken == 0 then return citizenId end
         end
     end
@@ -873,7 +873,7 @@ function Core.CreateAccountNumber()
     for _ = 1, UNIQUE_ID_TRIES do
         AccountNumber = 'US0' .. math.random(1, 9) .. 'HexaCore' .. math.random(1111, 9999) .. math.random(1111, 9999) .. math.random(11, 99)
         -- account ถูกฝากไว้ใน metadata (ตาราง users ไม่มีคอลัมน์ charinfo)
-        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.account")) = ?) AS uniqueCheck', { AccountNumber })
+        local result = Db.Prepare('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.account")) = ?) AS uniqueCheck', { AccountNumber })
         if result == 0 then return AccountNumber end
     end
 
@@ -886,7 +886,7 @@ function Core.CreateFingerprint()
     local FingerId
     for _ = 1, UNIQUE_ID_TRIES do
         FingerId = tostring(Core.Shared.RandomStr(2) .. Core.Shared.RandomInt(3) .. Core.Shared.RandomStr(1) .. Core.Shared.RandomInt(2) .. Core.Shared.RandomStr(3) .. Core.Shared.RandomInt(4))
-        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.fingerprint")) = ?) AS uniqueCheck', { FingerId })
+        local result = Db.Prepare('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.fingerprint")) = ?) AS uniqueCheck', { FingerId })
         if result == 0 then return FingerId end
     end
 
@@ -898,7 +898,7 @@ function Core.CreateWalletId()
     local WalletId
     for _ = 1, UNIQUE_ID_TRIES do
         WalletId = 'Hexa-' .. math.random(11111111, 99999999)
-        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.walletid")) = ?) AS uniqueCheck', { WalletId })
+        local result = Db.Prepare('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.walletid")) = ?) AS uniqueCheck', { WalletId })
         if result == 0 then return WalletId end
     end
 
@@ -910,7 +910,7 @@ function Core.CreatePhoneSerial()
     local SerialNumber
     for _ = 1, UNIQUE_ID_TRIES do
         SerialNumber = math.random(11111111, 99999999)
-        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.phonedata.SerialNumber")) = ?) AS uniqueCheck', { SerialNumber })
+        local result = Db.Prepare('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.phonedata.SerialNumber")) = ?) AS uniqueCheck', { SerialNumber })
         if result == 0 then return SerialNumber end
     end
 
