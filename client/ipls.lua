@@ -851,7 +851,7 @@ RequestImap(-274080837) -- fixed hole in wall
 RequestImap(-787042507)
 
 -- ############# -- Patch hole in building -1860, -1722, 109.25
-RequestImap(-1696865897)
+--RequestImap(-1696865897) -- ห้ามขอ imap นี้กลับ interiors.lua RemoveImap ทิ้งเพื่อไม่ให้ speakeasy Manzanita Post ถูกตีไม้ปิด และไฟล์นี้โหลดทีหลังจึงชนะเสมอ
 
 -- ############# -- Missing cabin -2376.0, -1590.96, 156.0
 RequestImap(-1387511711) -- shell
@@ -1519,7 +1519,7 @@ RequestImap(-1535282356) -- Wagon at -3716.76, -3601.13, 46.91
 RequestImap(1480174383)
 RequestImap(495423143)
 RequestImap(-1537525865)
-RequestImap(-2071756699)
+--RequestImap(-2071756699) -- ห้ามขอ imap นี้กลับ interiors.lua RemoveImap ทิ้งเพื่อไม่ให้ speakeasy New Austin ถูกตีไม้ปิด และไฟล์นี้โหลดทีหลังจึงชนะเสมอ
 --RequestImap(-1781758360)
 --RequestImap(1184975829) -- boulders blocking canyon
 --RequestImap(2094371528)
@@ -1948,7 +1948,7 @@ RequestImap(634831342) -- barn at 207.43, 987.12, 191.11
 RequestImap(-943891161) -- barn at -875.22, 332.55, 95.79
 RequestImap(-914406102) -- barn at -875.22, 332.55, 95.79
 RequestImap(1855900423) -- house at -821.62, 345.89, 97.75
-RequestImap(-1809571159) -- barn -1095.87, 700.46, 103.96
+--RequestImap(-1809571159) -- ห้ามขอ imap นี้กลับ interiors.lua RemoveImap ทิ้งเพื่อไม่ให้ speakeasy Grizzlies ถูกตีไม้ปิด (แลกกับโรงนา -1095.87, 700.46, 103.96 ที่หายไปด้วย)
 RequestImap(1531008020) -- cross with goat skull and wheel 368.74, 1444.86, 177.82
 RequestImap(1750312025) -- cross with goat skull and wheel 1514.9, 438.32, 89.88
 RequestImap(582879672) -- cross with goat skull and wheel 2928.25, 1296.81, 44.49
@@ -1974,7 +1974,7 @@ RequestImap(-910880980) -- props 781.75, 850.81, 118.97
 RequestImap(1133453602) -- ladder in barn 1178.15, 428.83, 92.78
 RequestImap(1968676233) -- pre lion mission 1385.04, 343.94, 87.56
 --RequestImap(2112594812) -- post lion mission 1385.04, 343.94, 87.56
-RequestImap(-1625703283) -- barn 1625.97, 820.33, 144.7
+--RequestImap(-1625703283) -- ห้ามขอ imap นี้กลับ interiors.lua RemoveImap ทิ้งเพื่อไม่ให้ speakeasy New Hanover ถูกตีไม้ปิด (แลกกับโรงนา 1625.97, 820.33, 144.7 ที่หายไปด้วย)
 RequestImap(563581773) -- army camp 1393.78, 1312.38, 164.61
 RequestImap(1628851253) -- army camp 1393.78, 1312.38, 164.61
 RequestImap(-703127827) -- army camp 1393.78, 1312.38, 164.61
@@ -2139,7 +2139,7 @@ RequestImap(1175400068)
 RequestImap(854689865)
 RequestImap(1772877245)
 RequestImap(-1466175146)
-RequestImap(-1023331176)
+--RequestImap(-1023331176) -- ห้ามขอ imap นี้กลับ interiors.lua RemoveImap ทิ้งเพื่อไม่ให้ speakeasy Lemoyne ถูกตีไม้ปิด และไฟล์นี้โหลดทีหลังจึงชนะเสมอ
 RequestImap(-276524767)
 RequestImap(1578454569)
 RequestImap(2101399188)

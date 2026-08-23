@@ -13,6 +13,7 @@ RequestImap(GetHashKey("MP006_A4SUPP_MOONSHINE05"))
 RequestImap(GetHashKey("MP006_A4SUPP_MOONSHINE05_PLUG"))
 
 -- speakeasy not boarded up
+-- ห้าเลขนี้ถูกปิดคอมเมนต์ไว้ใน client/ipls.lua ด้วย เพราะไฟล์นั้นโหลดทีหลัง ถ้าขอกลับมาคำสั่งถอดข้างล่างจะไร้ผลทันที
 RemoveImap(-1696865897) -- Manzanita Post
 RemoveImap(-1625703283) -- New Hanover
 RemoveImap(-1023331176) -- Lemoyne
