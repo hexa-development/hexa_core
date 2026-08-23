@@ -49,7 +49,7 @@ Documentation: [hexa-development.github.io/hexa-docs](https://hexa-development.g
    ensure hexa_core
    ```
 
-4. Pick your identifier type in `config.lua`:
+4. Pick your identifier type in `config/main.lua`:
 
    ```lua
    Config.IdentifierType = 'license' -- 'steam' or 'license'

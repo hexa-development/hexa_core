@@ -9,7 +9,17 @@ description 'Hexa Framework - core resource'
 version '3.0.0'
 
 shared_scripts {
-    'config.lua',
+    -- config ถูกแยกเป็นไฟล์ละหมวดใน config/ main.lua ต้องมาก่อนเพราะสร้างตาราง Config
+    -- และ player.lua อ้าง Config.DefaultSpawn ที่ตั้งในนั้น
+    'config/main.lua',
+    'config/save.lua',
+    'config/log.lua',
+    'config/money.lua',
+    'config/player.lua',
+    'config/density.lua',
+    'config/status.lua',
+    'config/eagleeye.lua',
+    'config/colormap.lua',
 
     'shared/log.lua',
     'shared/locale.lua',
