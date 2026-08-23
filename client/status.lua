@@ -10,7 +10,7 @@ local function clamp(value)
 end
 
 local function statusConfig()
-    return HexaCore.Config and HexaCore.Config.Status or nil
+    return Core.Config and Core.Config.Status or nil
 end
 
 -- รับค่าจาก server

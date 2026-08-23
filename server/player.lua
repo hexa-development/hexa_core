@@ -1,5 +1,5 @@
-﻿HexaCore.Players = {}
-HexaCore.Player = {}
+﻿Core.Players = {}
+Core.Player = {}
 
 -- โหลดข้อมูลผู้เล่นตอน login หรือเติมค่าเริ่มต้น แก้ตรงนี้ผิดพังทั้งระบบ (docs guide/player-object)
 
@@ -14,7 +14,7 @@ local itemsUnreadable = {}
 local function UserRowToPlayerData(row)
     local metadata = (row.metadata and json.decode(row.metadata)) or {}
     -- ค่าที่สองจาก BuildSlots คือธงอ่านค่าดิบไม่ออก ต้องจำไว้ ไม่งั้นเซฟรอบถัดไปเอาลิสต์ว่างทับ JSON เดิมที่ยังกู้ได้ในแถว
-    local items, unreadable = HexaCore.Storage.BuildSlots(row.inventory, row.loadout)
+    local items, unreadable = Core.Storage.BuildSlots(row.inventory, row.loadout)
     itemsUnreadable[row.citizenid] = unreadable or nil
     return {
         citizenid = row.citizenid,
@@ -58,10 +58,10 @@ local function BuildUserRow(PlayerData, coords)
         lastname = PlayerData.charinfo and PlayerData.charinfo.lastname or nil,
         dateofbirth = PlayerData.charinfo and PlayerData.charinfo.birthdate or nil,
         sex = (PlayerData.charinfo and PlayerData.charinfo.gender == 1) and 'f' or 'm',
-        position = json.encode(coords or PlayerData.position or HexaCore.Config.DefaultSpawn),
+        position = json.encode(coords or PlayerData.position or Core.Config.DefaultSpawn),
         -- ต้องใช้ codec ตัวเดียวกับ hexa_inventory:SaveInventory ไม่งั้นฟอร์แมตคนละแบบ ใครเซฟทีหลังทับของอีกฝั่งทิ้ง
-        inventory = json.encode(HexaCore.Storage.EncodeInventory(PlayerData.items)),
-        loadout = json.encode(HexaCore.Storage.EncodeLoadout(PlayerData.items)),
+        inventory = json.encode(Core.Storage.EncodeInventory(PlayerData.items)),
+        loadout = json.encode(Core.Storage.EncodeLoadout(PlayerData.items)),
         metadata = json.encode(metadata),
         -- คอลัมน์ status แบบย่อสไตล์ ESX (เผื่อเครื่องมือภายนอกอ่าน)
         status = json.encode({
@@ -89,26 +89,26 @@ local function upsertFor(PlayerData)
     return USERS_UPSERT_KEEP_ITEMS
 end
 
-function HexaCore.LoginPlayer(source, citizenid, newData)
+function Core.LoginPlayer(source, citizenid, newData)
     if source and source ~= '' then
         if citizenid then
-            local license = HexaCore.GetIdentifier(source)
+            local license = Core.GetIdentifier(source)
             local row = MySQL.prepare.await('SELECT * FROM users WHERE citizenid = ?', { citizenid })
             if row and license == row.identifier then
                 local data = UserRowToPlayerData(row)
                 -- ต้องล้าง isdead ตั้งแต่ก่อนสร้างตัวผู้เล่น เพราะเซฟรอบแรกใน CreatePlayer เขียน is_dead=1 ลง DB ไปก่อนที่บล็อกล่างจะได้ล้าง
                 if data.metadata and data.metadata.isdead then data.metadata.isdead = false end
-                HexaCore.LoadPlayer(source, data)
+                Core.LoadPlayer(source, data)
             else
                 DropPlayer(source, Lang:t('info.exploit_dropped'))
                 TriggerEvent('hexa_log:server:CreateLog', 'anticheat', 'Anti-Cheat', 'white', GetPlayerName(source) .. ' Has Been Dropped For Character Joining Exploit', false)
             end
         else
-            HexaCore.LoadPlayer(source, newData)
+            Core.LoadPlayer(source, newData)
         end
 
         -- ล้าง isdead ที่ค้างจากรอบก่อนเสมอ แหล่งความจริงคือ ped สด ถ้าค้าง true คนอื่นเปิดกระเป๋าปล้นได้ทั้งที่ยืนอยู่
-        local Player = HexaCore.Players[source]
+        local Player = Core.Players[source]
         if Player and Player.PlayerData.metadata.isdead then
             Player.SetMetaData('isdead', false)
         end
@@ -120,33 +120,33 @@ function HexaCore.LoginPlayer(source, citizenid, newData)
     end
 end
 
-function HexaCore.GetOfflinePlayerByCitizenId(citizenid)
+function Core.GetOfflinePlayerByCitizenId(citizenid)
     if citizenid then
         local row = MySQL.prepare.await('SELECT * FROM users WHERE citizenid = ?', { citizenid })
         if row then
-            return HexaCore.LoadPlayer(nil, UserRowToPlayerData(row))
+            return Core.LoadPlayer(nil, UserRowToPlayerData(row))
         end
     end
     return nil
 end
 
-function HexaCore.GetPlayerByLicense(license)
+function Core.GetPlayerByLicense(license)
     if license then
-        local source = HexaCore.GetSourceByIdentifier(license)
+        local source = Core.GetSourceByIdentifier(license)
         if source > 0 then
-            return HexaCore.Players[source]
+            return Core.Players[source]
         else
-            return HexaCore.GetOfflinePlayerByLicense(license)
+            return Core.GetOfflinePlayerByLicense(license)
         end
     end
     return nil
 end
 
-function HexaCore.GetOfflinePlayerByLicense(license)
+function Core.GetOfflinePlayerByLicense(license)
     if license then
         local row = MySQL.prepare.await('SELECT * FROM users WHERE identifier = ?', { license })
         if row then
-            return HexaCore.LoadPlayer(nil, UserRowToPlayerData(row))
+            return Core.LoadPlayer(nil, UserRowToPlayerData(row))
         end
     end
     return nil
@@ -188,13 +188,13 @@ local function applyDefaults(playerData, defaults)
     end
 end
 
-function HexaCore.LoadPlayer(source, PlayerData)
+function Core.LoadPlayer(source, PlayerData)
     PlayerData = PlayerData or {}
     local Offline = not source
 
     if source then
         PlayerData.source = source
-        PlayerData.license = PlayerData.license or HexaCore.GetIdentifier(source)
+        PlayerData.license = PlayerData.license or Core.GetIdentifier(source)
         PlayerData.name = GetPlayerName(source)
     end
 
@@ -203,7 +203,7 @@ function HexaCore.LoadPlayer(source, PlayerData)
 
     local validatedJob = false
     if PlayerData.job and PlayerData.job.name ~= nil and PlayerData.job.grade and PlayerData.job.grade.level ~= nil then
-        local jobInfo = HexaCore.Shared.Jobs[PlayerData.job.name]
+        local jobInfo = Core.Shared.Jobs[PlayerData.job.name]
 
         if jobInfo then
             local jobGradeInfo = jobInfo.grades[tostring(PlayerData.job.grade.level)]
@@ -228,32 +228,32 @@ function HexaCore.LoadPlayer(source, PlayerData)
     end
 
     MergeLegacyBankAccounts(PlayerData)
-    applyDefaults(PlayerData, HexaCore.Config.Player.PlayerDefaults)
+    applyDefaults(PlayerData, Core.Config.Player.PlayerDefaults)
 
     if GetResourceState('hexa_inventory') == 'started' then
         -- nil กลางรายการข้าม resource จะถูกตัด citizenid เลื่อนไปช่อง source แล้ว LoadInventory คืน {} ทับกระเป๋าว่าง
         PlayerData.items = exports['hexa_inventory']:LoadInventory(PlayerData.source or 0, PlayerData.citizenid)
     end
 
-    return HexaCore.CreatePlayer(PlayerData, Offline)
+    return Core.CreatePlayer(PlayerData, Offline)
 end
 
 -- On player logout
 
-function HexaCore.LogoutPlayer(source)
+function Core.LogoutPlayer(source)
     -- ต้องเซฟก่อนถอดตัวผู้เล่นออกจากหน่วยความจำ ไม่งั้นทั้งเซสชัน (เงิน/ของ/ตำแหน่ง) หายทันทีที่มีใครเรียกทางนี้
-    local Player = HexaCore.Players[source]
+    local Player = Core.Players[source]
     if Player then Player.Save() end
     TriggerClientEvent('HexaCore:Client:OnPlayerUnload', source)
     TriggerEvent('HexaCore:Server:OnPlayerUnload', source)
     TriggerClientEvent('HexaCore:Player:UpdatePlayerData', source)
     Wait(200)
-    HexaCore.Players[source] = nil
+    Core.Players[source] = nil
 end
 
 -- สร้างตัวละครใหม่ แก้ตรงนี้ผิดพังทั้งระบบ (docs guide/player-object)
 
-function HexaCore.CreatePlayer(PlayerData, Offline)
+function Core.CreatePlayer(PlayerData, Offline)
     local self = {}
     self.PlayerData = PlayerData
     self.Offline = Offline
@@ -286,7 +286,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
 
         self.Dirty = true
 
-        if HexaCore.Config.Money.EnableMoneyItems then
+        if Core.Config.Money.EnableMoneyItems then
             self.PlayerData = SynchronizeMoneyItems(self.PlayerData)
         end
 
@@ -297,12 +297,12 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
     function self.SetJob(job, grade)
         job = job:lower()
         grade = grade or '0'
-        if not HexaCore.Shared.Jobs[job] then return false end
+        if not Core.Shared.Jobs[job] then return false end
         self.PlayerData.job = {
             name = job,
-            label = HexaCore.Shared.Jobs[job].label,
-            onduty = HexaCore.Shared.Jobs[job].defaultDuty,
-            type = HexaCore.Shared.Jobs[job].type or 'none',
+            label = Core.Shared.Jobs[job].label,
+            onduty = Core.Shared.Jobs[job].defaultDuty,
+            type = Core.Shared.Jobs[job].type or 'none',
             grade = {
                 name = 'No Grades',
                 level = 0,
@@ -311,7 +311,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
             }
         }
         local gradeKey = tostring(grade)
-        local jobGradeInfo = HexaCore.Shared.Jobs[job].grades[gradeKey]
+        local jobGradeInfo = Core.Shared.Jobs[job].grades[gradeKey]
         if jobGradeInfo then
             self.PlayerData.job.grade.name = jobGradeInfo.name
             self.PlayerData.job.grade.level = tonumber(gradeKey)
@@ -330,7 +330,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
     end
 
     function self.HasItem(items, amount)
-        return HexaCore.HasItem(self.PlayerData.source, items, amount)
+        return Core.HasItem(self.PlayerData.source, items, amount)
     end
 
     -- เมธอดกลุ่มนี้ต้องนิยามตอนสร้าง ไม่ใช่ตอน OnPlayerLoaded เพราะ hexa_core โหลดก่อนจึงยังไม่เห็น (docs api/player-methods)
@@ -470,7 +470,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
                 TriggerEvent('hexa_log:server:CreateLog', 'playermoney', 'AddMoney', 'lightgreen', '**' .. GetPlayerName(self.PlayerData.source) .. ' (citizenid: ' .. self.PlayerData.citizenid .. ' | id: ' .. self.PlayerData.source .. ')** $' .. amount .. ' (' .. moneytype .. ') added, new ' .. moneytype .. ' balance: ' .. self.PlayerData.money[moneytype] .. ' reason: ' .. reason)
             end
 
-            if not HexaCore.Config.Money.EnableMoneyItems then
+            if not Core.Config.Money.EnableMoneyItems then
                 TriggerClientEvent('hud:client:OnMoneyChange', self.PlayerData.source, moneytype, amount, false)
             end
             TriggerClientEvent('HexaCore:Client:OnMoneyChange', self.PlayerData.source, moneytype, amount, 'add', reason)
@@ -490,13 +490,13 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         local current = tonumber(self.PlayerData.money[moneytype]) or 0
         -- บีบเพดานล่างไม่ให้ต่ำกว่า 0 เสมอ เดิม bank ไม่อยู่ใน DontAllowMinus + MinusLimit ติดลบ = ซื้อของฟรีได้ถึง $5,000
         local allowMinus = true
-        for _, mtype in pairs(HexaCore.Config.Money.DontAllowMinus or {}) do
+        for _, mtype in pairs(Core.Config.Money.DontAllowMinus or {}) do
             if mtype == moneytype then
                 allowMinus = false
                 break
             end
         end
-        local floorLimit = allowMinus and math.max(0, tonumber(HexaCore.Config.Money.MinusLimit) or 0) or 0
+        local floorLimit = allowMinus and math.max(0, tonumber(Core.Config.Money.MinusLimit) or 0) or 0
         if (current - amount) < floorLimit then return false end
         self.PlayerData.money[moneytype] = current - amount
 
@@ -507,7 +507,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
             else
                 TriggerEvent('hexa_log:server:CreateLog', 'playermoney', 'RemoveMoney', 'red', '**' .. GetPlayerName(self.PlayerData.source) .. ' (citizenid: ' .. self.PlayerData.citizenid .. ' | id: ' .. self.PlayerData.source .. ')** $' .. amount .. ' (' .. moneytype .. ') removed, new ' .. moneytype .. ' balance: ' .. self.PlayerData.money[moneytype] .. ' reason: ' .. reason)
             end
-            if not HexaCore.Config.Money.EnableMoneyItems then
+            if not Core.Config.Money.EnableMoneyItems then
                 TriggerClientEvent('hud:client:OnMoneyChange', self.PlayerData.source, moneytype, amount, true)
             end
             TriggerClientEvent('HexaCore:Client:OnMoneyChange', self.PlayerData.source, moneytype, amount, 'remove', reason)
@@ -530,7 +530,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         if not self.Offline then
             self.SyncPlayerData()
             TriggerEvent('hexa_log:server:CreateLog', 'playermoney', 'SetMoney', 'green', '**' .. GetPlayerName(self.PlayerData.source) .. ' (citizenid: ' .. self.PlayerData.citizenid .. ' | id: ' .. self.PlayerData.source .. ')** $' .. amount .. ' (' .. moneytype .. ') set, new ' .. moneytype .. ' balance: ' .. self.PlayerData.money[moneytype] .. ' reason: ' .. reason)
-            if not HexaCore.Config.Money.EnableMoneyItems then
+            if not Core.Config.Money.EnableMoneyItems then
                 TriggerClientEvent('hud:client:OnMoneyChange', self.PlayerData.source, moneytype, math.abs(difference), difference < 0)
             end
             TriggerClientEvent('HexaCore:Client:OnMoneyChange', self.PlayerData.source, moneytype, amount, 'set', reason)
@@ -548,16 +548,16 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
 
     function self.Save()
         if self.Offline then
-            HexaCore.SaveOfflinePlayer(self.PlayerData)
+            Core.SaveOfflinePlayer(self.PlayerData)
         else
             self.PullStateBags()
-            HexaCore.SavePlayer(self.PlayerData.source)
+            Core.SavePlayer(self.PlayerData.source)
         end
     end
 
     function self.Logout()
         if self.Offline then return end
-        HexaCore.LogoutPlayer(self.PlayerData.source)
+        Core.LogoutPlayer(self.PlayerData.source)
     end
 
     -- AddMethod กับ AddField เขียนลงช่องเดียวกันแล้ว จึงยุบเหลือ SetField ตัวเดียวที่เขียนทับเสมอ
@@ -581,7 +581,7 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
 
     -- hexa_redeemcode เดาชื่อนี้แล้วไม่เจอจนต้องเขียนทางอ้อมเอง ต่อสายให้ตรงกับ Core ที่มีอยู่แล้ว
     function self.CanCarryItem(item, amount)
-        return HexaCore.CanCarryItem(self.PlayerData.source, item, amount)
+        return Core.CanCarryItem(self.PlayerData.source, item, amount)
     end
 
     function self.PullStateBags()
@@ -622,9 +622,9 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
         return self
     else
         self.PushStateBags()
-        HexaCore.Players[self.PlayerData.source] = self
+        Core.Players[self.PlayerData.source] = self
         -- เซฟรอบนี้ห้ามแตะพิกัด ตอนนี้ ped ยังไม่ถูกวาร์ปไปจุดที่เซฟไว้ อ่านสดแล้วเขียนทับ = ตำแหน่งจริงหายตั้งแต่วินาทีที่ล็อกอิน
-        HexaCore.SavePlayer(self.PlayerData.source, true)
+        Core.SavePlayer(self.PlayerData.source, true)
         TriggerEvent('HexaCore:Server:PlayerLoaded', self)
         self.SyncPlayerData()
     end
@@ -632,42 +632,42 @@ end
 
 -- แขวนเมธอดเพิ่มบนตัวผู้เล่นจาก resource อื่น ตัวอย่างการใช้ดู docs api/player-methods
 
-function HexaCore.SetPlayerField(ids, methodName, handler)
+function Core.SetPlayerField(ids, methodName, handler)
     local idType = type(ids)
     if idType == 'number' then
         if ids == -1 then
-            for _, v in pairs(HexaCore.Players) do
+            for _, v in pairs(Core.Players) do
                 v.SetField(methodName, handler)
             end
         else
-            if not HexaCore.Players[ids] then return end
+            if not Core.Players[ids] then return end
 
-            HexaCore.Players[ids].SetField(methodName, handler)
+            Core.Players[ids].SetField(methodName, handler)
         end
     elseif idType == 'table' and table.type(ids) == 'array' then
         for i = 1, #ids do
-            HexaCore.SetPlayerField(ids[i], methodName, handler)
+            Core.SetPlayerField(ids[i], methodName, handler)
         end
     end
 end
 
 -- ใส่ฟิลด์ข้อมูลเพิ่มบนตัวผู้เล่น ตัวอย่างการใช้ดู docs api/player-methods
 
-function HexaCore.SetPlayerField(ids, fieldName, data)
+function Core.SetPlayerField(ids, fieldName, data)
     local idType = type(ids)
     if idType == 'number' then
         if ids == -1 then
-            for _, v in pairs(HexaCore.Players) do
+            for _, v in pairs(Core.Players) do
                 v.SetField(fieldName, data)
             end
         else
-            if not HexaCore.Players[ids] then return end
+            if not Core.Players[ids] then return end
 
-            HexaCore.Players[ids].SetField(fieldName, data)
+            Core.Players[ids].SetField(fieldName, data)
         end
     elseif idType == 'table' and table.type(ids) == 'array' then
         for i = 1, #ids do
-            HexaCore.SetPlayerField(ids[i], fieldName, data)
+            Core.SetPlayerField(ids[i], fieldName, data)
         end
     end
 end
@@ -675,9 +675,9 @@ end
 -- Save player info to database (ตาราง users สไตล์ ESX คีย์ด้วย identifier)
 
 --- @param skipPosition boolean|nil ข้ามการอ่านพิกัดสดจาก ped แล้วคงตำแหน่งเดิมใน PlayerData ไว้
-function HexaCore.SavePlayer(source, skipPosition)
+function Core.SavePlayer(source, skipPosition)
     -- ต้องเช็คก่อน index ไม่งั้นเซฟที่ค้างคิวหลังผู้เล่นหลุดจะโยน nil และ else ข้างล่างกลายเป็นโค้ดตาย
-    local Player = HexaCore.Players[source]
+    local Player = Core.Players[source]
     local PlayerData = Player and Player.PlayerData
     if PlayerData then
         local ped = GetPlayerPed(source)
@@ -703,7 +703,7 @@ function HexaCore.SavePlayer(source, skipPosition)
     end
 end
 
-function HexaCore.SaveOfflinePlayer(PlayerData)
+function Core.SaveOfflinePlayer(PlayerData)
     if PlayerData then
         MySQL.insert(upsertFor(PlayerData), BuildUserRow(PlayerData))
         if GetResourceState('hexa_inventory') == 'started' then exports['hexa_inventory']:SaveInventory(PlayerData, true) end
@@ -721,8 +721,8 @@ local playertables = { -- เพิ่มตารางที่อ้างอ
     { table = 'users'},
 }
 
-function HexaCore.DeleteCharacter(source, citizenid)
-    local license = HexaCore.GetIdentifier(source)
+function Core.DeleteCharacter(source, citizenid)
+    local license = Core.GetIdentifier(source)
     local result = MySQL.scalar.await('SELECT identifier FROM users WHERE citizenid = ?', { citizenid })
     if license == result then
         local query = 'DELETE FROM %s WHERE citizenid = ?'
@@ -748,13 +748,13 @@ function HexaCore.DeleteCharacter(source, citizenid)
     end
 end
 
-function HexaCore.ForceDeleteCharacter(citizenid)
+function Core.ForceDeleteCharacter(citizenid)
     local result = MySQL.scalar.await('SELECT identifier FROM users WHERE citizenid = ?', { citizenid })
     if result then
         local query = 'DELETE FROM %s WHERE citizenid = ?'
         local tableCount = #playertables
         local queries = table.create(tableCount, 0)
-        local Player = HexaCore.GetPlayerByCitizenId(citizenid)
+        local Player = Core.GetPlayerByCitizenId(citizenid)
 
         if Player then
             DropPlayer(Player.PlayerData.source, 'An admin deleted the character which you are currently using')
@@ -776,27 +776,27 @@ end
 
 -- Inventory Backwards Compatibility
 
-function HexaCore.SaveInventory(source)
+function Core.SaveInventory(source)
     if GetResourceState('hexa_inventory') ~= 'started' then return end
     exports['hexa_inventory']:SaveInventory(source, false)
 end
 
-function HexaCore.SaveOfflineInventory(PlayerData)
+function Core.SaveOfflineInventory(PlayerData)
     if GetResourceState('hexa_inventory') ~= 'started' then return end
     exports['hexa_inventory']:SaveInventory(PlayerData, true)
 end
 
-function HexaCore.GetTotalWeight(items)
+function Core.GetTotalWeight(items)
     if GetResourceState('hexa_inventory') ~= 'started' then return end
     return exports['hexa_inventory']:GetTotalWeight(items)
 end
 
-function HexaCore.GetSlotsByItem(items, itemName)
+function Core.GetSlotsByItem(items, itemName)
     if GetResourceState('hexa_inventory') ~= 'started' then return end
     return exports['hexa_inventory']:GetSlotsByItem(items, itemName)
 end
 
-function HexaCore.GetFirstSlotByItem(items, itemName)
+function Core.GetFirstSlotByItem(items, itemName)
     if GetResourceState('hexa_inventory') ~= 'started' then return end
     return exports['hexa_inventory']:GetFirstSlotByItem(items, itemName)
 end
@@ -812,7 +812,7 @@ local lockedIdSet = nil
 local function IsCitizenIdLocked(id)
     if not lockedIdSet then
         lockedIdSet = {}
-        for _, v in pairs(HexaCore.Config.Player.LockedIds or {}) do
+        for _, v in pairs(Core.Config.Player.LockedIds or {}) do
             lockedIdSet[tonumber(v)] = true
         end
     end
@@ -821,7 +821,7 @@ end
 
 --- จำนวนหลักของเลขสุ่ม บีบไว้ไม่ให้หลุดช่วง integer ของ Lua
 local function CitizenIdDigits()
-    local digits = math.floor(tonumber(HexaCore.Config.Player.CitizenIdDigits) or 4)
+    local digits = math.floor(tonumber(Core.Config.Player.CitizenIdDigits) or 4)
     if digits < 1 then return 1 end
     if digits > 12 then return 12 end
     return digits
@@ -845,8 +845,8 @@ local function DrawCitizenId(prefix, digits)
     return nil
 end
 
-function HexaCore.CreateCitizenId()
-    local prefix = tostring(HexaCore.Config.Player.CitizenIdPrefix or '')
+function Core.CreateCitizenId()
+    local prefix = tostring(Core.Config.Player.CitizenIdPrefix or '')
     local digits = CitizenIdDigits()
 
     for extra = 0, CITIZEN_ID_MAX_EXTRA_DIGITS do
@@ -868,7 +868,7 @@ end
 -- คิวรีเช็คซ้ำพวกนี้สแกน metadata ทั้งตาราง ถ้าคืน nil (DB สะดุด) การเรียกซ้ำตัวเองแบบเดิมจะวนไม่รู้จบคาเธรด login จึงต้องมีเพดานรอบ
 local UNIQUE_ID_TRIES = 10
 
-function HexaCore.CreateAccountNumber()
+function Core.CreateAccountNumber()
     local AccountNumber
     for _ = 1, UNIQUE_ID_TRIES do
         AccountNumber = 'US0' .. math.random(1, 9) .. 'HexaCore' .. math.random(1111, 9999) .. math.random(1111, 9999) .. math.random(11, 99)
@@ -882,10 +882,10 @@ function HexaCore.CreateAccountNumber()
     return AccountNumber
 end
 
-function HexaCore.CreateFingerprint()
+function Core.CreateFingerprint()
     local FingerId
     for _ = 1, UNIQUE_ID_TRIES do
-        FingerId = tostring(HexaCore.Shared.RandomStr(2) .. HexaCore.Shared.RandomInt(3) .. HexaCore.Shared.RandomStr(1) .. HexaCore.Shared.RandomInt(2) .. HexaCore.Shared.RandomStr(3) .. HexaCore.Shared.RandomInt(4))
+        FingerId = tostring(Core.Shared.RandomStr(2) .. Core.Shared.RandomInt(3) .. Core.Shared.RandomStr(1) .. Core.Shared.RandomInt(2) .. Core.Shared.RandomStr(3) .. Core.Shared.RandomInt(4))
         local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.fingerprint")) = ?) AS uniqueCheck', { FingerId })
         if result == 0 then return FingerId end
     end
@@ -894,7 +894,7 @@ function HexaCore.CreateFingerprint()
     return FingerId
 end
 
-function HexaCore.CreateWalletId()
+function Core.CreateWalletId()
     local WalletId
     for _ = 1, UNIQUE_ID_TRIES do
         WalletId = 'Hexa-' .. math.random(11111111, 99999999)
@@ -906,7 +906,7 @@ function HexaCore.CreateWalletId()
     return WalletId
 end
 
-function HexaCore.CreatePhoneSerial()
+function Core.CreatePhoneSerial()
     local SerialNumber
     for _ = 1, UNIQUE_ID_TRIES do
         SerialNumber = math.random(11111111, 99999999)

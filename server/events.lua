@@ -9,13 +9,13 @@ end)
 
 AddEventHandler('playerDropped', function(reason)
     local src = source
-    if not HexaCore.Players[src] then return end
-    local Player = HexaCore.Players[src]
+    if not Core.Players[src] then return end
+    local Player = Core.Players[src]
     TriggerEvent('hexa_log:server:CreateLog', 'joinleave', 'Dropped', 'red', '**' .. GetPlayerName(src) .. '** (' .. Player.PlayerData.license .. ') left..' .. '\n **Reason:** ' .. reason)
     TriggerEvent('HexaCore:Server:PlayerDropped', Player)
     Player.Save()
-    HexaCore.Player_Buckets[Player.PlayerData.license] = nil
-    HexaCore.Players[src] = nil
+    Core.Player_Buckets[Player.PlayerData.license] = nil
+    Core.Players[src] = nil
 end)
 
 local readyFunction = MySQL.ready
@@ -39,11 +39,11 @@ local function onPlayerConnecting(name, _, deferrals)
 
     Wait(0)
     deferrals.update(string.format('Hello %s. กำลังตรวจสอบตัวตนผู้เล่น...', name))
-    local identifier = HexaCore.GetIdentifier(src)
+    local identifier = Core.GetIdentifier(src)
 
     -- ไม่มี identifier ตามที่ตั้งค่าไว้ (เช่นบังคับ steam แต่ไม่ได้เปิดผ่าน Steam) ต้องตัดจบตั้งแต่หน้าเชื่อมต่อ
     if not identifier then
-        if (HexaCore.Config.IdentifierType or 'license') == 'steam' then
+        if (Core.Config.IdentifierType or 'license') == 'steam' then
             return deferrals.done('เซิร์ฟเวอร์นี้ต้องเปิดเกมผ่าน Steam (ไม่พบ Steam ID) กรุณาเปิด Steam ให้ล็อกอินอยู่ แล้วเปิด RDR2 ผ่าน Steam อีกครั้ง')
         end
         return deferrals.done(Lang:t('error.no_valid_license'))
@@ -53,7 +53,7 @@ local function onPlayerConnecting(name, _, deferrals)
     deferrals.update(string.format(Lang:t('info.join_server'), name))
     deferrals.done()
 
-    TriggerClientEvent('HexaCore:Client:SharedUpdate', src, HexaCore.Shared)
+    TriggerClientEvent('HexaCore:Client:SharedUpdate', src, Core.Shared)
 end
 
 AddEventHandler('playerConnecting', onPlayerConnecting)
@@ -64,17 +64,17 @@ AddEventHandler('playerConnecting', onPlayerConnecting)
 RegisterNetEvent('HexaCore:Server:TriggerClientCallback', function(name, id, ...)
     local src = source
     -- คิวอยู่ใต้ src ของคนที่ถูกถาม ผู้เล่นอื่นจึงเอื้อมไปกินคำตอบหรือล้างคิวของคนอื่นไม่ได้เลย
-    local pending = HexaCore.ClientCallbacks[src]
+    local pending = Core.ClientCallbacks[src]
     local cb = pending and pending[id]
     if not cb then return end
     pending[id] = nil
-    if not next(pending) then HexaCore.ClientCallbacks[src] = nil end
+    if not next(pending) then Core.ClientCallbacks[src] = nil end
     cb(...)
 end)
 
 -- คำถามที่ยังไม่ได้คำตอบของคนที่ออกไปแล้วต้องทิ้ง ไม่งั้นคิวถือ closure ค้างไว้ตลอดอายุเซิร์ฟ
 AddEventHandler('playerDropped', function()
-    HexaCore.ClientCallbacks[source] = nil
+    Core.ClientCallbacks[source] = nil
 end)
 
 -- Server Callback
@@ -82,7 +82,7 @@ RegisterNetEvent('HexaCore:Server:TriggerCallback', function(name, id, ...)
     local src = source
     -- id เป็นแค่ตั๋วที่ส่งกลับให้คนเดิม ต้องเป็นตัวเลขเท่านั้น กัน payload ปลอมยัดของแปลกเข้าคีย์ฝั่ง client
     if type(id) ~= 'number' then return end
-    HexaCore.TriggerCallback(name, src, function(...)
+    Core.TriggerCallback(name, src, function(...)
         TriggerClientEvent('HexaCore:Client:TriggerCallback', src, name, id, ...)
     end, ...)
 end)
@@ -101,7 +101,7 @@ AddEventHandler('HexaCore:UpdatePlayer', function()
     local now = GetGameTimer()
     if lastSave[src] and (now - lastSave[src]) < SAVE_COOLDOWN_MS then return end
     lastSave[src] = now
-    local Player = HexaCore.GetPlayer(src)
+    local Player = Core.GetPlayer(src)
     if not Player then return end
     Player.Save()
 end)
@@ -118,21 +118,21 @@ AddEventHandler('HexaCore:Server:SetMetaData', function(meta, data)
         return Hexa.Log('security id %s tried to set metadata key %s', src, tostring(meta))
     end
     if type(data) ~= 'number' and type(data) ~= 'boolean' then return end
-    local Player = HexaCore.GetPlayer(src)
+    local Player = Core.GetPlayer(src)
     if not Player then return end
     Player.SetMetaData(meta, data)
 end)
 
 RegisterNetEvent('HexaCore:ToggleDuty', function()
     local src = source
-    local Player = HexaCore.GetPlayer(src)
+    local Player = Core.GetPlayer(src)
     if not Player then return end
     if Player.PlayerData.job.onduty then
         Player.SetJobDuty(false)
-        HexaCore.Notify(src, {title = Lang:t('info.off_duty'), type = 'info', duration = 5000 })
+        Core.Notify(src, {title = Lang:t('info.off_duty'), type = 'info', duration = 5000 })
     else
         Player.SetJobDuty(true)
-        HexaCore.Notify(src, {title = Lang:t('info.on_duty'), type = 'info', duration = 5000 })
+        Core.Notify(src, {title = Lang:t('info.on_duty'), type = 'info', duration = 5000 })
     end
 
     TriggerEvent('HexaCore:Server:SetDuty', src, Player.PlayerData.job.onduty)
@@ -166,18 +166,18 @@ end)
 
 RegisterNetEvent('HexaCore:CallCommand', function(command, args)
     local src = source
-    if not HexaCore.Commands.List[command] then return end
-    local Player = HexaCore.GetPlayer(src)
+    if not Core.Commands.List[command] then return end
+    local Player = Core.GetPlayer(src)
     if not Player then return end
-    local hasPerm = HexaCore.HasPermission(src, 'command.' .. HexaCore.Commands.List[command].name)
+    local hasPerm = Core.HasPermission(src, 'command.' .. Core.Commands.List[command].name)
     if hasPerm then
-        if HexaCore.Commands.List[command].argsrequired and #HexaCore.Commands.List[command].arguments ~= 0 and not args[#HexaCore.Commands.List[command].arguments] then
-            HexaCore.Notify(src, {title = Lang:t('error.missing_args2'), type = 'error', duration = 5000 })
+        if Core.Commands.List[command].argsrequired and #Core.Commands.List[command].arguments ~= 0 and not args[#Core.Commands.List[command].arguments] then
+            Core.Notify(src, {title = Lang:t('error.missing_args2'), type = 'error', duration = 5000 })
         else
-            HexaCore.Commands.List[command].callback(src, args)
+            Core.Commands.List[command].callback(src, args)
         end
     else
-        HexaCore.Notify(src, {title = Lang:t('error.no_access'), type = 'error', duration = 5000 })
+        Core.Notify(src, {title = Lang:t('error.no_access'), type = 'error', duration = 5000 })
     end
 end)
 
@@ -187,8 +187,8 @@ local VEHICLE_SPAWN_COOLDOWN_MS = 3000
 
 AddEventHandler('playerDropped', function() lastVehicleSpawn[source] = nil end)
 
-HexaCore.CreateCallback('HexaCore:Server:SpawnVehicle', function(source, cb, model, coords, warp)
-    if not HexaCore.GetPlayer(source) then return cb(nil) end
+Core.CreateCallback('HexaCore:Server:SpawnVehicle', function(source, cb, model, coords, warp)
+    if not Core.GetPlayer(source) then return cb(nil) end
 
     if type(model) ~= 'string' and type(model) ~= 'number' then
         Hexa.Warn('id %s asked to spawn a vehicle with a %s model argument', tostring(source), type(model))
@@ -201,7 +201,7 @@ HexaCore.CreateCallback('HexaCore:Server:SpawnVehicle', function(source, cb, mod
     end
     lastVehicleSpawn[source] = now
 
-    local veh = HexaCore.SpawnVehicle(source, model, coords, warp)
+    local veh = Core.SpawnVehicle(source, model, coords, warp)
     if not veh or not DoesEntityExist(veh) then return cb(nil) end
     cb(NetworkGetNetworkIdFromEntity(veh))
 end)
@@ -219,8 +219,8 @@ RegisterNetEvent('HexaCore:Server:ReportCSRFFailure', function()
     local src = source
     if not src or src <= 0 then return end
 
-    local policy = (HexaCore.Config.Security and HexaCore.Config.Security.CSRFFailurePolicy) or 'log'
-    local threshold = (HexaCore.Config.Security and HexaCore.Config.Security.CSRFFailureThreshold) or 5
+    local policy = (Core.Config.Security and Core.Config.Security.CSRFFailurePolicy) or 'log'
+    local threshold = (Core.Config.Security and Core.Config.Security.CSRFFailureThreshold) or 5
 
     local now = GetGameTimer()
     local entry = csrfReports[src]

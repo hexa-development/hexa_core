@@ -7,7 +7,7 @@ local REMOVE_WANTED_REGION_STYLE = 0x6786D7AFAC3162B3
 local activeZones = {}
 
 local function colormapConfig()
-    return HexaCore.Config and HexaCore.Config.Colormap or nil
+    return Core.Config and Core.Config.Colormap or nil
 end
 
 local function debugPrint(message)

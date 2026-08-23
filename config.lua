@@ -85,7 +85,7 @@ Config.Player.LockedIds = {
 -- ค่าเริ่มต้นของตัวละครใหม่ ช่องที่เป็น function() จะถูกเรียกตอนสร้างจริงเพื่อสุ่มค่าใหม่ทุกครั้ง ดู docs guide/player-object
 Config.Player.PlayerDefaults = {
     citizenid = function() -- citizen id ประจำตัวละคร (คำนำหน้า + เลขสุ่ม ตาม Config.Player.CitizenIdPrefix/Digits)
-        return HexaCore.CreateCitizenId()
+        return Core.CreateCitizenId()
     end,
     cid = 1, -- ลำดับช่องตัวละคร (character slot) ของบัญชีนั้นๆ
     money = function() -- เงินตั้งต้นทุกประเภท ดึงมาจาก Config.Money.MoneyTypes ด้านบนโดยอัตโนมัติ
@@ -105,7 +105,7 @@ Config.Player.PlayerDefaults = {
         gender = 0,              -- เพศ (0 = ชาย, 1 = หญิง)
         nationality = 'USA',     -- สัญชาติเริ่มต้น
         account = function()     -- เลขบัญชีธนาคาร สร้างใหม่แบบสุ่มไม่ซ้ำทุกตัวละคร
-            return HexaCore.CreateAccountNumber()
+            return Core.CreateAccountNumber()
         end
     },
 
@@ -139,10 +139,10 @@ Config.Player.PlayerDefaults = {
         rep = {},            -- ค่าชื่อเสียง (reputation) ในระบบต่างๆ
         callsign = 'NO CALLSIGN', -- รหัสเรียกขาน (ใช้กับอาชีพตำรวจ/หน่วยงาน)
         fingerprint = function() -- รหัสลายนิ้วมือ สร้างแบบสุ่มไม่ซ้ำทุกตัวละคร
-            return HexaCore.CreateFingerprint()
+            return Core.CreateFingerprint()
         end,
         walletid = function() -- รหัสกระเป๋าเงิน สร้างแบบสุ่มไม่ซ้ำทุกตัวละคร
-            return HexaCore.CreateWalletId()
+            return Core.CreateWalletId()
         end,
         criminalrecord = {   -- ประวัติอาชญากรรม
             hasRecord = false, -- มีประวัติหรือไม่

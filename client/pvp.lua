@@ -1,4 +1,4 @@
-local HexaCore = exports['hexa_core']:GetCoreObject()
+local Core = exports['hexa_core']:GetCoreObject()
 
 CreateThread(function()
     local active = false
@@ -34,14 +34,14 @@ CreateThread(function()
             lastPeaceful = peaceful
         end
 
-        if IsControlJustPressed(0, HexaCore.Shared.Keybinds['E']) then
+        if IsControlJustPressed(0, Core.Shared.Keybinds['E']) then
             -- ตั้งเป็นจำนวนเฟรมเท่าลูปซ้อนเดิม (200) แล้วปล่อยให้ guard ด้านบนเขียน relationship ครั้งเดียวตอนสถานะเปลี่ยน
             timer = 200
             active = true
             cancelAt = nil -- กด E ระหว่างที่ F กำลังนับดีเลย์อยู่ ถือว่าผู้เล่นสั่งลุยต่อ
         end
 
-        if IsControlJustPressed(0, HexaCore.Shared.Keybinds['F']) then
+        if IsControlJustPressed(0, Core.Shared.Keybinds['F']) then
             cancelAt = GetGameTimer() + 500 -- คงดีเลย์เดิม 500ms ไว้ แต่ไม่บล็อกลูป
         end
     end

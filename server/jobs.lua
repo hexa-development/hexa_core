@@ -51,7 +51,7 @@ local function loadJobsFromDatabase()
         end
     end
 
-    -- Shared เป็น reference เดียวกับ HexaCore.Shared จึงอัปเดตทั้งคู่พร้อมกัน
+    -- Shared เป็น reference เดียวกับ Core.Shared จึงอัปเดตทั้งคู่พร้อมกัน
     Shared.Jobs = jobs
 
     local count = 0

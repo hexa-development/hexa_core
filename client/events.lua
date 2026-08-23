@@ -166,7 +166,7 @@ end)
 -- Other stuff
 
 RegisterNetEvent('HexaCore:Player:SetPlayerData', function(val)
-    HexaCore.PlayerData = val
+    Core.PlayerData = val
 end)
 
 RegisterNetEvent('HexaCore:Player:UpdatePlayerData', function()
@@ -185,7 +185,7 @@ end)
 -- Client Callback
 RegisterNetEvent('HexaCore:Client:TriggerClientCallback', function(name, id, ...)
     -- ต้องส่ง id กลับไปด้วย ฝั่ง server ใช้คู่ (src, id) หาคิวที่รออยู่ ถ้าส่งแต่ชื่อจะไปกินคิวของคนอื่นได้
-    HexaCore.TriggerClientCallback(name, function(...)
+    Core.TriggerClientCallback(name, function(...)
         TriggerServerEvent('HexaCore:Server:TriggerClientCallback', name, id, ...)
     end, ...)
 end)
@@ -193,9 +193,9 @@ end)
 -- Server Callback
 RegisterNetEvent('HexaCore:Client:TriggerCallback', function(name, id, ...)
     -- หยิบด้วย id ของการเรียกครั้งนั้น ไม่ใช่ชื่อ ไม่งั้นสองคำขอชื่อเดียวกันจะสลับคำตอบกัน
-    local cb = HexaCore.ServerCallbacks[id]
+    local cb = Core.ServerCallbacks[id]
     if not cb then return end
-    HexaCore.ServerCallbacks[id] = nil
+    Core.ServerCallbacks[id] = nil
     cb(...)
 end)
 
@@ -256,20 +256,20 @@ end)
 
 -- Listen to Shared being updated
 RegisterNetEvent('HexaCore:Client:OnSharedUpdate', function(tableName, key, value)
-    HexaCore.Shared[tableName][key] = value
+    Core.Shared[tableName][key] = value
     TriggerEvent('HexaCore:Client:UpdateObject')
 end)
 
 RegisterNetEvent('HexaCore:Client:OnSharedUpdateMultiple', function(tableName, values)
     for key, value in pairs(values) do
-        HexaCore.Shared[tableName][key] = value
+        Core.Shared[tableName][key] = value
     end
     TriggerEvent('HexaCore:Client:UpdateObject')
 end)
 
 -- Shared (Items/Jobs): ต้องยิง UpdateObject ต่อ ไม่งั้นสำเนา core object ของ resource อื่นค้างว่างทั้ง session
 RegisterNetEvent('HexaCore:Client:SharedUpdate', function(shared)
-    HexaCore.Shared = shared
+    Core.Shared = shared
     TriggerEvent('HexaCore:Client:UpdateObject')
 end)
 

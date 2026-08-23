@@ -1,33 +1,33 @@
-﻿-- Add or change (a) method(s) in the HexaCore.Functions table
+﻿-- Add or change (a) method(s) in the Core.Functions table
 local function SetMethod(methodName, handler)
     if type(methodName) ~= 'string' then
         return false, 'invalid_method_name'
     end
 
-    HexaCore.Functions[methodName] = handler
+    Core.Functions[methodName] = handler
 
     TriggerEvent('HexaCore:Server:UpdateObject')
 
     return true, 'success'
 end
 
-HexaCore.SetField = SetMethod
+Core.SetField = SetMethod
 exports('SetMethod', SetMethod)
 
--- Add or change (a) field(s) in the HexaCore table
+-- Add or change (a) field(s) in the Core table
 local function SetField(fieldName, data)
     if type(fieldName) ~= 'string' then
         return false, 'invalid_field_name'
     end
 
-    HexaCore[fieldName] = data
+    Core[fieldName] = data
 
     TriggerEvent('HexaCore:Server:UpdateObject')
 
     return true, 'success'
 end
 
-HexaCore.SetField = SetField
+Core.SetField = SetField
 exports('SetField', SetField)
 
 -- Single add job function which should only be used if you planning on adding a single job
@@ -36,18 +36,18 @@ local function AddJob(jobName, job)
         return false, 'invalid_job_name'
     end
 
-    if HexaCore.Shared.Jobs[jobName] then
+    if Core.Shared.Jobs[jobName] then
         return false, 'job_exists'
     end
 
-    HexaCore.Shared.Jobs[jobName] = job
+    Core.Shared.Jobs[jobName] = job
 
     TriggerClientEvent('HexaCore:Client:OnSharedUpdate', -1, 'Jobs', jobName, job)
     TriggerEvent('HexaCore:Server:UpdateObject')
     return true, 'success'
 end
 
-HexaCore.RegisterJob = AddJob
+Core.RegisterJob = AddJob
 exports('AddJob', AddJob)
 
 -- Multiple Add Jobs
@@ -64,14 +64,14 @@ local function AddJobs(jobs)
             break
         end
 
-        if HexaCore.Shared.Jobs[key] then
+        if Core.Shared.Jobs[key] then
             message = 'job_exists'
             shouldContinue = false
             errorItem = jobs[key]
             break
         end
 
-        HexaCore.Shared.Jobs[key] = value
+        Core.Shared.Jobs[key] = value
     end
 
     if not shouldContinue then return false, message, errorItem end
@@ -80,7 +80,7 @@ local function AddJobs(jobs)
     return true, message, nil
 end
 
-HexaCore.RegisterJobs = AddJobs
+Core.RegisterJobs = AddJobs
 exports('AddJobs', AddJobs)
 
 -- Single Remove Job
@@ -89,18 +89,18 @@ local function RemoveJob(jobName)
         return false, 'invalid_job_name'
     end
 
-    if not HexaCore.Shared.Jobs[jobName] then
+    if not Core.Shared.Jobs[jobName] then
         return false, 'job_not_exists'
     end
 
-    HexaCore.Shared.Jobs[jobName] = nil
+    Core.Shared.Jobs[jobName] = nil
 
     TriggerClientEvent('HexaCore:Client:OnSharedUpdate', -1, 'Jobs', jobName, nil)
     TriggerEvent('HexaCore:Server:UpdateObject')
     return true, 'success'
 end
 
-HexaCore.UnregisterJob = RemoveJob
+Core.UnregisterJob = RemoveJob
 exports('RemoveJob', RemoveJob)
 
 -- Single Update Job
@@ -109,18 +109,18 @@ local function UpdateJob(jobName, job)
         return false, 'invalid_job_name'
     end
 
-    if not HexaCore.Shared.Jobs[jobName] then
+    if not Core.Shared.Jobs[jobName] then
         return false, 'job_not_exists'
     end
 
-    HexaCore.Shared.Jobs[jobName] = job
+    Core.Shared.Jobs[jobName] = job
 
     TriggerClientEvent('HexaCore:Client:OnSharedUpdate', -1, 'Jobs', jobName, job)
     TriggerEvent('HexaCore:Server:UpdateObject')
     return true, 'success'
 end
 
-HexaCore.UpdateJobDefinition = UpdateJob
+Core.UpdateJobDefinition = UpdateJob
 exports('UpdateJob', UpdateJob)
 
 -- Single add item
@@ -129,18 +129,18 @@ local function AddItem(itemName, item)
         return false, 'invalid_item_name'
     end
 
-    if HexaCore.Shared.Items[itemName] then
+    if Core.Shared.Items[itemName] then
         return false, 'item_exists'
     end
 
-    HexaCore.Shared.Items[itemName] = item
+    Core.Shared.Items[itemName] = item
 
     TriggerClientEvent('HexaCore:Client:OnSharedUpdate', -1, 'Items', itemName, item)
     TriggerEvent('HexaCore:Server:UpdateObject')
     return true, 'success'
 end
 
-HexaCore.RegisterItem = AddItem
+Core.RegisterItem = AddItem
 exports('AddItem', AddItem)
 
 -- Single update item
@@ -148,16 +148,16 @@ local function UpdateItem(itemName, item)
     if type(itemName) ~= 'string' then
         return false, 'invalid_item_name'
     end
-    if not HexaCore.Shared.Items[itemName] then
+    if not Core.Shared.Items[itemName] then
         return false, 'item_not_exists'
     end
-    HexaCore.Shared.Items[itemName] = item
+    Core.Shared.Items[itemName] = item
     TriggerClientEvent('HexaCore:Client:OnSharedUpdate', -1, 'Items', itemName, item)
     TriggerEvent('HexaCore:Server:UpdateObject')
     return true, 'success'
 end
 
-HexaCore.UpdateItemDefinition = UpdateItem
+Core.UpdateItemDefinition = UpdateItem
 exports('UpdateItem', UpdateItem)
 
 -- Multiple Add Items
@@ -174,14 +174,14 @@ local function AddItems(items)
             break
         end
 
-        if HexaCore.Shared.Items[key] then
+        if Core.Shared.Items[key] then
             message = 'item_exists'
             shouldContinue = false
             errorItem = items[key]
             break
         end
 
-        HexaCore.Shared.Items[key] = value
+        Core.Shared.Items[key] = value
     end
 
     if not shouldContinue then return false, message, errorItem end
@@ -190,7 +190,7 @@ local function AddItems(items)
     return true, message, nil
 end
 
-HexaCore.RegisterItems = AddItems
+Core.RegisterItems = AddItems
 exports('AddItems', AddItems)
 
 -- Single Remove Item
@@ -199,18 +199,18 @@ local function RemoveItem(itemName)
         return false, 'invalid_item_name'
     end
 
-    if not HexaCore.Shared.Items[itemName] then
+    if not Core.Shared.Items[itemName] then
         return false, 'item_not_exists'
     end
 
-    HexaCore.Shared.Items[itemName] = nil
+    Core.Shared.Items[itemName] = nil
 
     TriggerClientEvent('HexaCore:Client:OnSharedUpdate', -1, 'Items', itemName, nil)
     TriggerEvent('HexaCore:Server:UpdateObject')
     return true, 'success'
 end
 
-HexaCore.UnregisterItem = RemoveItem
+Core.UnregisterItem = RemoveItem
 exports('RemoveItem', RemoveItem)
 
 local resourceName = GetCurrentResourceName()
@@ -222,7 +222,7 @@ local function GetCoreVersion(InvokingResource)
     return resourceVersion
 end
 
-HexaCore.GetCoreVersion = GetCoreVersion
+Core.GetCoreVersion = GetCoreVersion
 exports('GetCoreVersion', GetCoreVersion)
 
 local function ExploitBan(playerId, origin)

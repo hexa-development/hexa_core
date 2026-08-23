@@ -2,10 +2,10 @@
 
 -- อาวุธแยกไป users.loadout ไม่ปนใน users.inventory ตัดสินด้วย Shared.IsWeapon ตัวเดียว - ดู docs guide/persistence
 
-HexaCore = HexaCore or {}
-HexaCore.Storage = {}
+Core = Core or {}
+Core.Storage = {}
 
-local Storage = HexaCore.Storage
+local Storage = Core.Storage
 
 -- เรียงคีย์ตามชื่อ เพราะ pairs() ไล่ JSON object ไม่คงลำดับ ไม่เรียงแล้วของจะสลับช่องทุกครั้งที่เข้าเกม
 local function sortedKeys(map)

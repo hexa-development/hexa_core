@@ -47,39 +47,39 @@ end
 
 -- Callbacks
 
-function HexaCore.CreateCallback(name, cb)
-    HexaCore.ClientCallbacks[name] = cb
+function Core.CreateCallback(name, cb)
+    Core.ClientCallbacks[name] = cb
 end
 
-function HexaCore.TriggerClientCallback(name, cb, ...)
-    if not HexaCore.ClientCallbacks[name] then return end
-    HexaCore.ClientCallbacks[name](cb, ...)
+function Core.TriggerClientCallback(name, cb, ...)
+    if not Core.ClientCallbacks[name] then return end
+    Core.ClientCallbacks[name](cb, ...)
 end
 
 -- ตั๋วประจำการเรียกแต่ละครั้ง เก็บ cb ตามชื่ออย่างเดียวทำให้ยิงชื่อเดียวกันซ้อนกันแล้วคำตอบไขว้กันหรือหายไปเลย
 local requestId = 0
 
-function HexaCore.TriggerCallback(name, cb, ...)
+function Core.TriggerCallback(name, cb, ...)
     requestId = requestId + 1
-    HexaCore.ServerCallbacks[requestId] = cb
+    Core.ServerCallbacks[requestId] = cb
     TriggerServerEvent('HexaCore:Server:TriggerCallback', name, requestId, ...)
 end
 
--- ใช้ Core.PrintDebug/Core.DumpTable ที่ shared/log.lua แทน HexaCore.Debug เดิมที่ชน signature ฝั่ง server (docs guide/logging)
+-- ใช้ Core.PrintDebug/Core.DumpTable ที่ shared/log.lua แทน Core.Debug เดิมที่ชน signature ฝั่ง server (docs guide/logging)
 
 -- Player
 
-function HexaCore.GetPlayerData(cb)
-    if not cb then return HexaCore.PlayerData end
-    cb(HexaCore.PlayerData)
+function Core.GetPlayerData(cb)
+    if not cb then return Core.PlayerData end
+    cb(Core.PlayerData)
 end
 
-function HexaCore.GetCoords(entity)
+function Core.GetCoords(entity)
     local coords = GetEntityCoords(entity)
     return vector4(coords.x, coords.y, coords.z, GetEntityHeading(entity))
 end
 
-function HexaCore.HasItem(items, amount)
+function Core.HasItem(items, amount)
     -- เช็ค started เหมือนฝั่ง server: ถามตอน hexa_inventory ยังไม่ขึ้น ต้องได้ false ไม่ใช่ error
     if GetResourceState('hexa_inventory') ~= 'started' then return false end
     return exports['hexa_inventory']:HasItem(items, amount)
@@ -89,7 +89,7 @@ end
 ---@param timeout number - The time in milliseconds before the function times out
 ---@param speed number - The speed at which the entity should turn
 ---@return number - The time at which the entity was looked at
-function HexaCore.TurnPedToFaceEntity(entity, timeout, speed)
+function Core.TurnPedToFaceEntity(entity, timeout, speed)
     -- ต้องเช็คชนิดก่อน: DoesEntityExist ที่รับ string/table จะ error ทันที guard บรรทัดถัดไปไม่มีโอกาสทำงาน
     if type(entity) ~= 'number' then return end
     if not DoesEntityExist(entity) then return end
@@ -134,7 +134,7 @@ end
 --- @param duration number - The duration of the animation in milliseconds. -1 will play the animation indefinitely
 --- @param upperbodyOnly boolean - If true, the animation will only affect the upper body of the ped
 --- @return number - The timestamp indicating when the animation concluded. For animations set to loop indefinitely, this will still return the maximum duration of the animation.
-function HexaCore.PlayAnim(animDict, animName, upperbodyOnly, duration)
+function Core.PlayAnim(animDict, animName, upperbodyOnly, duration)
     local flags = upperbodyOnly and 16 or 0
     local runTime = duration or -1
     requestAnimDict(animDict)
@@ -148,16 +148,16 @@ local MALE_MODELS = {
     [joaat('mp_m_freemode_01')] = true,
 }
 
-function HexaCore.IsWearingGloves()
+function Core.IsWearingGloves()
     local ped = PlayerPedId()
     local armIndex = GetPedDrawableVariation(ped, 3)
     local model = GetEntityModel(ped)
     if MALE_MODELS[model] then
-        if HexaCore.Shared.MaleNoGloves[armIndex] then
+        if Core.Shared.MaleNoGloves[armIndex] then
             return false
         end
     else
-        if HexaCore.Shared.FemaleNoGloves[armIndex] then
+        if Core.Shared.FemaleNoGloves[armIndex] then
             return false
         end
     end
@@ -166,19 +166,19 @@ end
 
 -- World Getters
 
-function HexaCore.GetVehicles()
+function Core.GetVehicles()
     return GetGamePool('CVehicle')
 end
 
-function HexaCore.GetObjects()
+function Core.GetObjects()
     return GetGamePool('CObject')
 end
 
-function HexaCore.GetLocalPlayers()
+function Core.GetLocalPlayers()
     return GetActivePlayers()
 end
 
-function HexaCore.GetLocalPlayersInRadius(coords, distance)
+function Core.GetLocalPlayersInRadius(coords, distance)
     local players = GetActivePlayers()
     local ped = PlayerPedId()
     if coords then
@@ -198,14 +198,14 @@ function HexaCore.GetLocalPlayersInRadius(coords, distance)
     return closePlayers
 end
 
-function HexaCore.GetClosestLocalPlayer(coords)
+function Core.GetClosestLocalPlayer(coords)
     local ped = PlayerPedId()
     if coords then
         coords = type(coords) == 'table' and vec3(coords.x, coords.y, coords.z) or coords
     else
         coords = GetEntityCoords(ped)
     end
-    local closestPlayers = HexaCore.GetLocalPlayersInRadius(coords)
+    local closestPlayers = Core.GetLocalPlayersInRadius(coords)
     local closestDistance = -1
     local closestPlayer = -1
     for i = 1, #closestPlayers, 1 do
@@ -222,7 +222,7 @@ function HexaCore.GetClosestLocalPlayer(coords)
     return closestPlayer, closestDistance
 end
 
-function HexaCore.GetPeds(ignoreList)
+function Core.GetPeds(ignoreList)
     local pedPool = GetGamePool('CPed')
     local peds = {}
     local ignoreTable = {}
@@ -238,7 +238,7 @@ function HexaCore.GetPeds(ignoreList)
     return peds
 end
 
-function HexaCore.GetClosestPed(coords, ignoreList)
+function Core.GetClosestPed(coords, ignoreList)
     local ped = PlayerPedId()
     if coords then
         coords = type(coords) == 'table' and vec3(coords.x, coords.y, coords.z) or coords
@@ -246,7 +246,7 @@ function HexaCore.GetClosestPed(coords, ignoreList)
         coords = GetEntityCoords(ped)
     end
     ignoreList = ignoreList or {}
-    local peds = HexaCore.GetPeds(ignoreList)
+    local peds = Core.GetPeds(ignoreList)
     local closestDistance = -1
     local closestPed = -1
     for i = 1, #peds, 1 do
@@ -261,7 +261,7 @@ function HexaCore.GetClosestPed(coords, ignoreList)
     return closestPed, closestDistance
 end
 
-function HexaCore.GetClosestVehicle(coords)
+function Core.GetClosestVehicle(coords)
     local ped = PlayerPedId()
     local vehicles = GetGamePool('CVehicle')
     local closestDistance = -1
@@ -283,7 +283,7 @@ function HexaCore.GetClosestVehicle(coords)
     return closestVehicle, closestDistance
 end
 
-function HexaCore.GetClosestObject(coords)
+function Core.GetClosestObject(coords)
     local ped = PlayerPedId()
     local objects = GetGamePool('CObject')
     local closestDistance = -1
@@ -306,14 +306,14 @@ end
 
 -- Vehicle
 
-HexaCore.LoadModel = requestModel
+Core.LoadModel = requestModel
 
 ---@param model string|number
 ---@param cb? fun(vehicle: number)
 ---@param coords? vector4 player position if not specified
 ---@param isnetworked? boolean defaults to true
 ---@param teleportInto boolean teleport player to driver seat if true
-function HexaCore.SpawnVehicle(model, cb, coords, isnetworked, teleportInto)
+function Core.SpawnVehicle(model, cb, coords, isnetworked, teleportInto)
     local playerPed = PlayerPedId()
     local playerCoords = GetEntityCoords(playerPed)
     local combinedCoords = vec4(playerCoords.x, playerCoords.y, playerCoords.z, GetEntityHeading(playerPed))
@@ -332,22 +332,22 @@ function HexaCore.SpawnVehicle(model, cb, coords, isnetworked, teleportInto)
     if cb then cb(veh) end
 end
 
-function HexaCore.DeleteVehicle(vehicle)
+function Core.DeleteVehicle(vehicle)
     SetEntityAsMissionEntity(vehicle, true, true)
     DeleteVehicle(vehicle)
 end
 
-function HexaCore.GetPlate(vehicle)
+function Core.GetPlate(vehicle)
     if vehicle == 0 then return end
-    return HexaCore.Shared.Trim(GetVehicleNumberPlateText(vehicle))
+    return Core.Shared.Trim(GetVehicleNumberPlateText(vehicle))
 end
 
-function HexaCore.GetVehicleLabel(vehicle)
+function Core.GetVehicleLabel(vehicle)
     if vehicle == nil or vehicle == 0 then return end
     return GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
 end
 
-function HexaCore.GetVehicleProperties(vehicle)
+function Core.GetVehicleProperties(vehicle)
     if DoesEntityExist(vehicle) then
         local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
 
@@ -397,14 +397,14 @@ function HexaCore.GetVehicleProperties(vehicle)
 
         return {
             model = GetEntityModel(vehicle),
-            plate = HexaCore.GetPlate(vehicle),
+            plate = Core.GetPlate(vehicle),
             plateIndex = GetVehicleNumberPlateTextIndex(vehicle),
-            bodyHealth = HexaCore.Shared.Round(GetVehicleBodyHealth(vehicle), 0.1),
-            engineHealth = HexaCore.Shared.Round(GetVehicleEngineHealth(vehicle), 0.1),
-            tankHealth = HexaCore.Shared.Round(GetVehiclePetrolTankHealth(vehicle), 0.1),
-            fuelLevel = HexaCore.Shared.Round(GetVehicleFuelLevel(vehicle), 0.1),
-            dirtLevel = HexaCore.Shared.Round(GetVehicleDirtLevel(vehicle), 0.1),
-            oilLevel = HexaCore.Shared.Round(GetVehicleOilLevel(vehicle), 0.1),
+            bodyHealth = Core.Shared.Round(GetVehicleBodyHealth(vehicle), 0.1),
+            engineHealth = Core.Shared.Round(GetVehicleEngineHealth(vehicle), 0.1),
+            tankHealth = Core.Shared.Round(GetVehiclePetrolTankHealth(vehicle), 0.1),
+            fuelLevel = Core.Shared.Round(GetVehicleFuelLevel(vehicle), 0.1),
+            dirtLevel = Core.Shared.Round(GetVehicleDirtLevel(vehicle), 0.1),
+            oilLevel = Core.Shared.Round(GetVehicleOilLevel(vehicle), 0.1),
             color1 = colorPrimary,
             color2 = colorSecondary,
             pearlescentColor = pearlescentColor,
@@ -425,7 +425,7 @@ function HexaCore.GetVehicleProperties(vehicle)
     end
 end
 
-function HexaCore.SetVehicleProperties(vehicle, props)
+function Core.SetVehicleProperties(vehicle, props)
     if DoesEntityExist(vehicle) then
         if props.extras then
             for id, enabled in pairs(props.extras) do
@@ -526,14 +526,14 @@ end
 -- Unused
 
 -- ชุด SetTextFont/BeginTextCommandDisplayText/AddTextComponentSubstringPlayerName เป็นของ GTA V ไม่มีใน RDR3 เรียกแล้วตายที่บรรทัดแรก ต้องใช้สาย CreateVarString+DisplayText แบบ client/drawtext.lua
-function HexaCore.DrawText(x, y, width, height, scale, r, g, b, a, text)
+function Core.DrawText(x, y, width, height, scale, r, g, b, a, text)
     -- Use local function instead
     SetTextScale(scale, scale)
     SetTextColor(r, g, b, a)
     DisplayText(CreateVarString(10, 'LITERAL_STRING', text), x - width / 2, y - height / 2 + 0.005)
 end
 
-function HexaCore.DrawText3D(x, y, z, text)
+function Core.DrawText3D(x, y, z, text)
     -- Use local function instead
     SetDrawOrigin(x, y, z, 0)
     -- พื้นหลังต้องวาดก่อนตัวอักษร ไม่งั้นแผ่นดำทับข้อความที่เพิ่งวาดไป
@@ -546,9 +546,9 @@ function HexaCore.DrawText3D(x, y, z, text)
     ClearDrawOrigin()
 end
 
-HexaCore.LoadAnimDict = requestAnimDict
+Core.LoadAnimDict = requestAnimDict
 
-function HexaCore.GetClosestBone(entity, list)
+function Core.GetClosestBone(entity, list)
     local playerCoords, bone, coords, distance = GetEntityCoords(PlayerPedId())
     for _, element in pairs(list) do
         local boneCoords = GetWorldPositionOfEntityBone(entity, element.id or element)
@@ -567,7 +567,7 @@ function HexaCore.GetClosestBone(entity, list)
     return bone, coords, distance
 end
 
-function HexaCore.GetBoneDistance(entity, boneType, boneIndex)
+function Core.GetBoneDistance(entity, boneType, boneIndex)
     local bone
     if boneType == 1 then
         bone = GetPedBoneIndex(entity, boneIndex)
@@ -579,17 +579,17 @@ function HexaCore.GetBoneDistance(entity, boneType, boneIndex)
     return #(boneCoords - playerCoords)
 end
 
-function HexaCore.CreateAttachedProp(ped, model, boneId, x, y, z, xR, yR, zR, vertex)
+function Core.CreateAttachedProp(ped, model, boneId, x, y, z, xR, yR, zR, vertex)
     local modelHash = type(model) == 'string' and joaat(model) or model
     local bone = GetPedBoneIndex(ped, boneId)
-    HexaCore.LoadModel(modelHash)
+    Core.LoadModel(modelHash)
     local prop = CreateObject(modelHash, 1.0, 1.0, 1.0, 1, 1, 0)
     AttachEntityToEntity(prop, ped, bone, x, y, z, xR, yR, zR, 1, 1, 0, 1, not vertex and 2 or 0, 1)
     SetModelAsNoLongerNeeded(modelHash)
     return prop
 end
 
-function HexaCore.IsAreaClearOfVehicles(coords, radius)
+function Core.IsAreaClearOfVehicles(coords, radius)
     if coords then
         coords = type(coords) == 'table' and vec3(coords.x, coords.y, coords.z) or coords
     else
@@ -608,12 +608,12 @@ function HexaCore.IsAreaClearOfVehicles(coords, radius)
     return true
 end
 
-HexaCore.LoadAnimSet = requestAnimSet
+Core.LoadAnimSet = requestAnimSet
 
-HexaCore.LoadPtfxAsset = requestNamedPtfxAsset
+Core.LoadPtfxAsset = requestNamedPtfxAsset
 
 ---@deprecated use ParticleFx natives directly
-function HexaCore.StartParticleAtCoord(dict, ptName, looped, coords, rot, scale, alpha, color, duration)    coords = type(coords) == 'table' and vec3(coords.x, coords.y, coords.z) or coords or GetEntityCoords(PlayerPedId())
+function Core.StartParticleAtCoord(dict, ptName, looped, coords, rot, scale, alpha, color, duration)    coords = type(coords) == 'table' and vec3(coords.x, coords.y, coords.z) or coords or GetEntityCoords(PlayerPedId())
 
     requestNamedPtfxAsset(dict)
     UseParticleFxAssetNextCall(dict)
@@ -640,7 +640,7 @@ function HexaCore.StartParticleAtCoord(dict, ptName, looped, coords, rot, scale,
 end
 
 ---@deprecated use ParticleFx natives directly
-function HexaCore.StartParticleOnEntity(dict, ptName, looped, entity, bone, offset, rot, scale, alpha, color, evolution, duration)
+function Core.StartParticleOnEntity(dict, ptName, looped, entity, bone, offset, rot, scale, alpha, color, evolution, duration)
     requestNamedPtfxAsset(dict)
     UseParticleFxAssetNextCall(dict)
     local particleHandle = nil
@@ -681,16 +681,16 @@ function HexaCore.StartParticleOnEntity(dict, ptName, looped, entity, bone, offs
     return particleHandle
 end
 
-function HexaCore.GetStreetNamesAtCoords(coords)
+function Core.GetStreetNamesAtCoords(coords)
     local streetname1, streetname2 = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
     return { main = GetStreetNameFromHashKey(streetname1), cross = GetStreetNameFromHashKey(streetname2) }
 end
 
-function HexaCore.GetZoneAtCoords(coords)
+function Core.GetZoneAtCoords(coords)
     return GetLabelText(GetNameOfZone(coords))
 end
 
-function HexaCore.GetCardinalDirection(entity)
+function Core.GetCardinalDirection(entity)
     entity = DoesEntityExist(entity) and entity or PlayerPedId()
     if DoesEntityExist(entity) then
         local heading = GetEntityHeading(entity)
@@ -708,7 +708,7 @@ function HexaCore.GetCardinalDirection(entity)
     end
 end
 
-function HexaCore.GetInGameTime()
+function Core.GetInGameTime()
     local obj = {}
     obj.min = GetClockMinutes()
     obj.hour = GetClockHours()
@@ -724,7 +724,7 @@ function HexaCore.GetInGameTime()
     return obj
 end
 
-function HexaCore.GetGroundCoords(coords)
+function Core.GetGroundCoords(coords)
     if not coords then return end
 
     local retval, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, coords.z, 0)
@@ -755,7 +755,7 @@ do
     end
 end
 
-function HexaCore.GetGroundMaterial(entity)
+function Core.GetGroundMaterial(entity)
     local coords = GetEntityCoords(entity)
     local num = StartShapeTestCapsule(coords.x, coords.y, coords.z + 4, coords.x, coords.y, coords.z - 2.0, 1, 1, entity, 7)
     local retval, success, endCoords, surfaceNormal, materialHash, entityHit = shapeTestResult(num)

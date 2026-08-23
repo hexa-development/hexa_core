@@ -59,7 +59,7 @@ end
 -- Money operations hanlders
 
 local function handleAddMoney(src, moneytype, amount)
-    local player = HexaCore.GetPlayer(src)
+    local player = Core.GetPlayer(src)
     if not player or not moneyItems[moneytype] then return end
 
     local dollars, cents = getParts(amount)
@@ -77,7 +77,7 @@ local function handleAddMoney(src, moneytype, amount)
 end
 
 local function handleRemoveMoney(src, moneytype, amount)
-    local player = HexaCore.GetPlayer(src)
+    local player = Core.GetPlayer(src)
     if not player or not moneyItems[moneytype] then return false end
 
     local inventoryMoney = getInventoryMoney(player.PlayerData)
@@ -119,7 +119,7 @@ local function handleRemoveMoney(src, moneytype, amount)
 end
 
 local function handleSetMoney(src, moneytype, amount)
-    local player = HexaCore.GetPlayer(src)
+    local player = Core.GetPlayer(src)
     if not player or not moneyItems[moneytype] then return end
 
     local function removeAllItems(itemName)
@@ -154,7 +154,7 @@ AddEventHandler('playerDropped', function() reconciled[source] = nil end)
 RegisterNetEvent('HexaCore:Server:OnPlayerLoaded')
 AddEventHandler('HexaCore:Server:OnPlayerLoaded', function()
     local src = source
-    local player = HexaCore.GetPlayer(src)
+    local player = Core.GetPlayer(src)
     if not player then return end
 
     if reconciled[src] then
@@ -170,7 +170,7 @@ AddEventHandler('HexaCore:Server:OnPlayerLoaded', function()
 
     local money = getInventoryMoney(player.PlayerData)
 
-    if HexaCore.Config.Money.EnableMoneyItems then
+    if Core.Config.Money.EnableMoneyItems then
         local cash = calculateTotal(money.cashDollars, money.cashCents)
         local bloodmoney = calculateTotal(money.bloodDollars, money.bloodCents)
 
@@ -200,7 +200,7 @@ end)
 
 -- Enable handlers and synchronization when enabled in config
 
-if HexaCore.Config.Money.EnableMoneyItems then
+if Core.Config.Money.EnableMoneyItems then
 
     local moneyHandlers = {
         add = handleAddMoney,

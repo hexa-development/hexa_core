@@ -86,7 +86,7 @@ local function loadItemsFromDatabase()
 
     local items = buildCatalogue(rows)
 
-    -- Shared เป็น reference เดียวกับ HexaCore.Shared จึงอัปเดตทั้งคู่พร้อมกัน
+    -- Shared เป็น reference เดียวกับ Core.Shared จึงอัปเดตทั้งคู่พร้อมกัน
     Shared.Items = items
 
     local count, weapons = 0, 0

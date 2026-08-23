@@ -7,7 +7,7 @@ local IsStatusKey = {}
 for _, key in ipairs(StatusKeys) do IsStatusKey[key] = true end
 
 local function statusConfig()
-    return HexaCore.Config and HexaCore.Config.Status or nil
+    return Core.Config and Core.Config.Status or nil
 end
 
 local function clamp(value)
@@ -17,7 +17,7 @@ end
 --- อ่านค่าสถานะทั้งหมดของผู้เล่นคนหนึ่ง (nil = ไม่มีตัวละครโหลดอยู่)
 local function readStatus(src)
     -- ต้องชื่อ ply ไม่ใช่ Player เพราะไฟล์นี้ใช้ global Player(...) อ่าน statebag ชนชื่อเมื่อไหร่ statebag พังเงียบ
-    local ply = HexaCore.GetPlayer(src)
+    local ply = Core.GetPlayer(src)
     if not ply then return nil end
 
     local metadata = ply.PlayerData.metadata or {}
@@ -30,7 +30,7 @@ end
 
 --- เขียนหลายช่องพร้อมกันแล้วบอก client รอบเดียว ช่องที่ไม่รู้จักถูกทิ้ง (quiet = ไม่ยิง PlayerData ทั้งก้อน ใช้กับรอบลดค่าตามเวลา)
 local function writeStatus(src, values, quiet)
-    local ply = HexaCore.GetPlayer(src)
+    local ply = Core.GetPlayer(src)
     if not ply then return nil end
 
     local applied = {}
@@ -83,13 +83,13 @@ CreateThread(function()
         if cfg and cfg.Enabled and type(cfg.Drain) == 'table' then
             -- ก็อปรายชื่อไว้ก่อนวน เพราะรอบนี้มี Wait คั่น ถ้ามีคน login เพิ่มระหว่างทาง pairs() บนตารางเดิมจะพัง
             local sources = {}
-            for _, ply in pairs(HexaCore.Players or {}) do
+            for _, ply in pairs(Core.Players or {}) do
                 sources[#sources + 1] = ply.PlayerData.source
             end
 
             for index = 1, #sources do
                 -- ผู้เล่นอาจหลุดไประหว่างที่รอบนี้เดินอยู่ ต้องหยิบใหม่ทุกครั้งไม่ใช้ตัวที่ปิดทับไว้
-                local ply = HexaCore.GetPlayer(sources[index])
+                local ply = Core.GetPlayer(sources[index])
                 if ply then
                     local src = ply.PlayerData.source
                     local metadata = ply.PlayerData.metadata or {}
@@ -160,7 +160,7 @@ end)
 
 -- คำสั่งแอดมิน
 
-HexaCore.Commands.Add('setstatus', 'ตั้งค่าสถานะร่างกายของผู้เล่น', {
+Core.Commands.Add('setstatus', 'ตั้งค่าสถานะร่างกายของผู้เล่น', {
     { name = 'id',    help = 'ไอดีผู้เล่น' },
     { name = 'key',   help = 'hunger / thirst / cleanliness / stress' },
     { name = 'value', help = 'ค่า 0-100' },
@@ -170,12 +170,12 @@ HexaCore.Commands.Add('setstatus', 'ตั้งค่าสถานะร่�
     local value = tonumber(args[3])
 
     if not target or not IsStatusKey[key] or not value then
-        return HexaCore.Notify(source, { title = 'ใช้: /setstatus [id] [hunger|thirst|cleanliness|stress] [0-100]', type = 'error', duration = 5000 })
+        return Core.Notify(source, { title = 'ใช้: /setstatus [id] [hunger|thirst|cleanliness|stress] [0-100]', type = 'error', duration = 5000 })
     end
 
     if not writeStatus(target, { [key] = value }) then
-        return HexaCore.Notify(source, { title = 'ไม่พบผู้เล่นไอดีนี้', type = 'error', duration = 5000 })
+        return Core.Notify(source, { title = 'ไม่พบผู้เล่นไอดีนี้', type = 'error', duration = 5000 })
     end
 
-    HexaCore.Notify(source, { title = ('ตั้ง %s ของไอดี %s เป็น %s แล้ว'):format(key, target, clamp(value)), type = 'success', duration = 5000 })
+    Core.Notify(source, { title = ('ตั้ง %s ของไอดี %s เป็น %s แล้ว'):format(key, target, clamp(value)), type = 'success', duration = 5000 })
 end, 'admin')

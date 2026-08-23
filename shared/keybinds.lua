@@ -1,6 +1,6 @@
 Shared = Shared or {}
 
--- use HexaCore.Shared.Keybinds['J']
+-- use Core.Shared.Keybinds['J']
 
 Shared.Keybinds = {
     -- Letters

@@ -65,7 +65,7 @@ end
 
 CreateThread(function()
     -- เปิด MultiCharacter อยู่ = ปิด auto-login ให้ multichar เป็นคนสั่ง spawn เอง (handler ด้านล่างยังทำงานให้)
-    if HexaCore.Config.MultiCharacter then return end
+    if Core.Config.MultiCharacter then return end
 
     resuming = NetworkIsSessionStarted()
 

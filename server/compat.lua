@@ -25,7 +25,7 @@ local RENAMED = {
     CreateSerialNumber          = 'CreatePhoneSerial',
 }
 
--- ชื่อเดิมที่เคยอยู่ใต้ HexaCore.Player.* ตอนนี้ยุบขึ้นมาอยู่บน Core แล้ว ต้องเติมนามให้ไม่ชนกับเมธอดของตัวผู้เล่น
+-- ชื่อเดิมที่เคยอยู่ใต้ Core.Player.* ตอนนี้ยุบขึ้นมาอยู่บน Core แล้ว ต้องเติมนามให้ไม่ชนกับเมธอดของตัวผู้เล่น
 local RENAMED_LIFECYCLE = {
     Login                       = 'LoginPlayer',
     Logout                      = 'LogoutPlayer',
@@ -53,7 +53,7 @@ for oldName, newName in pairs(RENAMED) do
     deprecate(oldName, newName)
 end
 
--- เนมสเปซปลอมแทน HexaCore.Player.* ที่ยุบทิ้ง __index ต้องจับทุกชื่อ ไม่ใช่แค่ตัวที่เปลี่ยนชื่อ เพราะย้ายขึ้น Core หมด
+-- เนมสเปซปลอมแทน Core.Player.* ที่ยุบทิ้ง __index ต้องจับทุกชื่อ ไม่ใช่แค่ตัวที่เปลี่ยนชื่อ เพราะย้ายขึ้น Core หมด
 Core.Player = setmetatable({}, {
     __index = function(_, key)
         local target = RENAMED_LIFECYCLE[key] or key
