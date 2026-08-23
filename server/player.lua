@@ -7,9 +7,15 @@ local resourceName = GetCurrentResourceName()
 
 -- ตัวแปลงแถว users (สไตล์ ESX) กับ PlayerData: DB เก็บคอลัมน์แยกแต่ในเกมใช้โครงเดิม โค้ดส่วนอื่นจึงไม่ต้องแก้
 
+-- ตัวละครที่อ่านคอลัมน์ inventory/loadout ไม่ออก คีย์ด้วย citizenid เพราะต้องคุมทั้งตัวที่ออนไลน์และ offline object ที่ไม่มี source
+local itemsUnreadable = {}
+
 -- แถว users -> PlayerData (ช่องที่ขาดจะถูกเติมโดย applyDefaults ใน CheckPlayerData)
 local function UserRowToPlayerData(row)
     local metadata = (row.metadata and json.decode(row.metadata)) or {}
+    -- ค่าที่สองจาก BuildSlots คือธงอ่านค่าดิบไม่ออก ต้องจำไว้ ไม่งั้นเซฟรอบถัดไปเอาลิสต์ว่างทับ JSON เดิมที่ยังกู้ได้ในแถว
+    local items, unreadable = HexaCore.Storage.BuildSlots(row.inventory, row.loadout)
+    itemsUnreadable[row.citizenid] = unreadable or nil
     return {
         citizenid = row.citizenid,
         cid = 1,
@@ -29,7 +35,7 @@ local function UserRowToPlayerData(row)
         position = row.position and json.decode(row.position) or nil,
         metadata = metadata,
         -- DB แยก inventory/loadout แต่รันไทม์รวมเป็นก้อนเดียว ห้ามเก็บสำเนา loadout เพราะ items คือแหล่งความจริงเดียว
-        items = HexaCore.Storage.BuildSlots(row.inventory, row.loadout),
+        items = items,
     }
 end
 
@@ -70,13 +76,29 @@ end
 
 local USERS_UPSERT = 'INSERT INTO users (identifier, citizenid, accounts, job, job_grade, firstname, lastname, dateofbirth, sex, position, inventory, loadout, metadata, status, is_dead) VALUES (:identifier, :citizenid, :accounts, :job, :job_grade, :firstname, :lastname, :dateofbirth, :sex, :position, :inventory, :loadout, :metadata, :status, :is_dead) ON DUPLICATE KEY UPDATE accounts = :accounts, job = :job, job_grade = :job_grade, firstname = :firstname, lastname = :lastname, dateofbirth = :dateofbirth, sex = :sex, position = :position, inventory = :inventory, loadout = :loadout, metadata = :metadata, status = :status, is_dead = :is_dead'
 
+-- ใช้ตอนที่อ่านคอลัมน์ inventory/loadout เดิมไม่ออก เขียนช่องอื่นตามปกติแต่ปล่อยสองคอลัมน์นั้นไว้ให้แอดมินกู้ JSON เดิมได้
+-- ฝั่ง INSERT ยังส่งค่าครบ เพราะแถวที่อ่านไม่ออกคือแถวที่มีอยู่แล้ว เส้นทางที่วิ่งจริงจึงเป็น UPDATE เสมอ
+local USERS_UPSERT_KEEP_ITEMS = 'INSERT INTO users (identifier, citizenid, accounts, job, job_grade, firstname, lastname, dateofbirth, sex, position, inventory, loadout, metadata, status, is_dead) VALUES (:identifier, :citizenid, :accounts, :job, :job_grade, :firstname, :lastname, :dateofbirth, :sex, :position, :inventory, :loadout, :metadata, :status, :is_dead) ON DUPLICATE KEY UPDATE accounts = :accounts, job = :job, job_grade = :job_grade, firstname = :firstname, lastname = :lastname, dateofbirth = :dateofbirth, sex = :sex, position = :position, metadata = :metadata, status = :status, is_dead = :is_dead'
+
+-- เลือกคำสั่งเซฟตามว่าแถวของตัวละครนี้อ่าน items ไม่ออกหรือไม่
+local function upsertFor(PlayerData)
+    if not itemsUnreadable[PlayerData.citizenid] then return USERS_UPSERT end
+    Hexa.WarnOnce('items-unreadable:' .. tostring(PlayerData.citizenid),
+        'items of %s could not be decoded on load - saving every other column but leaving inventory/loadout untouched',
+        tostring(PlayerData.citizenid))
+    return USERS_UPSERT_KEEP_ITEMS
+end
+
 function HexaCore.LoginPlayer(source, citizenid, newData)
     if source and source ~= '' then
         if citizenid then
             local license = HexaCore.GetIdentifier(source)
             local row = MySQL.prepare.await('SELECT * FROM users WHERE citizenid = ?', { citizenid })
             if row and license == row.identifier then
-                HexaCore.LoadPlayer(source, UserRowToPlayerData(row))
+                local data = UserRowToPlayerData(row)
+                -- ต้องล้าง isdead ตั้งแต่ก่อนสร้างตัวผู้เล่น เพราะเซฟรอบแรกใน CreatePlayer เขียน is_dead=1 ลง DB ไปก่อนที่บล็อกล่างจะได้ล้าง
+                if data.metadata and data.metadata.isdead then data.metadata.isdead = false end
+                HexaCore.LoadPlayer(source, data)
             else
                 DropPlayer(source, Lang:t('info.exploit_dropped'))
                 TriggerEvent('hexa_log:server:CreateLog', 'anticheat', 'Anti-Cheat', 'white', GetPlayerName(source) .. ' Has Been Dropped For Character Joining Exploit', false)
@@ -191,6 +213,10 @@ function HexaCore.LoadPlayer(source, PlayerData)
                 PlayerData.job.payment = jobGradeInfo.payment
                 PlayerData.job.grade.isboss = jobGradeInfo.isboss or false
                 PlayerData.job.isboss = jobGradeInfo.isboss or false
+                -- ต้องคืน type จากตาราง jobs ด้วย ไม่งั้น applyDefaults ตีตรา 'none' ทับ แล้วสคริปต์ที่เช็คหมวดอาชีพมองไม่เห็น
+                PlayerData.job.type = jobInfo.type or 'none'
+                -- users ไม่มีคอลัมน์ onduty ค่าจึงมาเป็น nil เสมอ ต้องเทียบกับ nil ตรง ๆ เพราะ or ของ applyDefaults แยก false ที่เก็บไว้กับคีย์ที่ขาดไม่ออก
+                if PlayerData.job.onduty == nil then PlayerData.job.onduty = jobInfo.defaultDuty or false end
                 validatedJob = true
             end
         end
@@ -215,6 +241,9 @@ end
 -- On player logout
 
 function HexaCore.LogoutPlayer(source)
+    -- ต้องเซฟก่อนถอดตัวผู้เล่นออกจากหน่วยความจำ ไม่งั้นทั้งเซสชัน (เงิน/ของ/ตำแหน่ง) หายทันทีที่มีใครเรียกทางนี้
+    local Player = HexaCore.Players[source]
+    if Player then Player.Save() end
     TriggerClientEvent('HexaCore:Client:OnPlayerUnload', source)
     TriggerEvent('HexaCore:Server:OnPlayerUnload', source)
     TriggerClientEvent('HexaCore:Player:UpdatePlayerData', source)
@@ -565,7 +594,13 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
                 metadata[key] = state[key]
             end
         end
-    
+
+        -- ไม่มีใครเขียน statebag health เลย ค่าที่อ่านกลับมาคือค่าที่ PushStateBags เพิ่งใส่ลงไปเอง ต้องอ่านจาก ped สดถึงจะเป็นเลือดจริง
+        local ped = GetPlayerPed(self.PlayerData.source)
+        local health = DoesEntityExist(ped) and GetEntityHealth(ped) or nil
+        -- 0 คือตายอยู่หรือ ped ยังไม่พร้อม เก็บค่าเดิมไว้ดีกว่าเขียนเลือดศูนย์ลง DB แล้วเข้าเกมรอบหน้ามาเป็นศพ
+        if health and health > 0 then metadata.health = health end
+
         if next(metadata) then
             self.SetMetaData(metadata)
         end
@@ -588,7 +623,8 @@ function HexaCore.CreatePlayer(PlayerData, Offline)
     else
         self.PushStateBags()
         HexaCore.Players[self.PlayerData.source] = self
-        HexaCore.SavePlayer(self.PlayerData.source)
+        -- เซฟรอบนี้ห้ามแตะพิกัด ตอนนี้ ped ยังไม่ถูกวาร์ปไปจุดที่เซฟไว้ อ่านสดแล้วเขียนทับ = ตำแหน่งจริงหายตั้งแต่วินาทีที่ล็อกอิน
+        HexaCore.SavePlayer(self.PlayerData.source, true)
         TriggerEvent('HexaCore:Server:PlayerLoaded', self)
         self.SyncPlayerData()
     end
@@ -638,19 +674,20 @@ end
 
 -- Save player info to database (ตาราง users สไตล์ ESX คีย์ด้วย identifier)
 
-function HexaCore.SavePlayer(source)
+--- @param skipPosition boolean|nil ข้ามการอ่านพิกัดสดจาก ped แล้วคงตำแหน่งเดิมใน PlayerData ไว้
+function HexaCore.SavePlayer(source, skipPosition)
     -- ต้องเช็คก่อน index ไม่งั้นเซฟที่ค้างคิวหลังผู้เล่นหลุดจะโยน nil และ else ข้างล่างกลายเป็นโค้ดตาย
     local Player = HexaCore.Players[source]
     local PlayerData = Player and Player.PlayerData
     if PlayerData then
         local ped = GetPlayerPed(source)
         -- ped อาจยังไม่มีตอนคิวเซฟทำงาน แล้ว GetEntityCoords คืน 0,0,0 = ส่งตัวละครไปโผล่กลางทะเล จึงใช้ตำแหน่งเดิมแทน
-        local pcoords = DoesEntityExist(ped) and GetEntityCoords(ped) or nil
+        local pcoords = (not skipPosition) and DoesEntityExist(ped) and GetEntityCoords(ped) or nil
 
         -- ธงถูกปิดก่อนเขียน ไม่ใช่หลังเขียน เพราะการเขียนเป็นแบบไม่รอผล ถ้าปิดทีหลังจะไปลบธงที่เพิ่งถูกปักใหม่ระหว่างรอ
         Player.Dirty = false
 
-        MySQL.insert(USERS_UPSERT, BuildUserRow(PlayerData, pcoords), function(insertId)
+        MySQL.insert(upsertFor(PlayerData), BuildUserRow(PlayerData, pcoords), function(insertId)
             -- เดิมพิมพ์ว่าสำเร็จตั้งแต่ยังไม่ได้เขียน และพิมพ์เหมือนกันหมดไม่ว่าจะสำเร็จหรือไม่
             if insertId == nil then
                 Player.Dirty = true
@@ -660,7 +697,7 @@ function HexaCore.SavePlayer(source)
             Hexa.Debug('saved %s (%s)', tostring(PlayerData.name), tostring(PlayerData.citizenid))
         end)
 
-        if GetResourceState('hexa_inventory') == 'started' then exports['hexa_inventory']:SaveInventory(source) end
+        -- ไม่ต้องเรียก hexa_inventory:SaveInventory ซ้ำ upsert ข้างบนเขียนคอลัมน์ inventory/loadout ของแถวเดียวกันจาก PlayerData.items ด้วย codec ตัวเดียวกันไปแล้ว
     else
         Hexa.Error('SavePlayer called for id %s but no player data is loaded', tostring(source))
     end
@@ -668,7 +705,7 @@ end
 
 function HexaCore.SaveOfflinePlayer(PlayerData)
     if PlayerData then
-        MySQL.insert(USERS_UPSERT, BuildUserRow(PlayerData))
+        MySQL.insert(upsertFor(PlayerData), BuildUserRow(PlayerData))
         if GetResourceState('hexa_inventory') == 'started' then exports['hexa_inventory']:SaveInventory(PlayerData, true) end
         -- log บรรทัดนี้ throw ได้ทั้งที่ MySQL.insert ข้างบนลงไปแล้ว ผู้เรียกเลยเห็นว่าล้มเหลวทั้งที่เงินเข้าจริง
         Hexa.Debug('saved offline character %s', tostring(PlayerData.name or PlayerData.citizenid))
@@ -697,6 +734,9 @@ function HexaCore.DeleteCharacter(source, citizenid)
             queries[i] = { query = query:format(v.table), values = { citizenid } }
         end
 
+        -- แถวหายแล้ว ธง items อ่านไม่ออกของ citizenid นี้ต้องหายตาม ไม่งั้นตัวละครใหม่ที่บังเอิญได้ id เดิมจะถูกกันไม่ให้เซฟของ
+        itemsUnreadable[citizenid] = nil
+
         MySQL.transaction(queries, function(result2)
             if result2 then
                 TriggerEvent('hexa_log:server:CreateLog', 'joinleave', 'Character Deleted', 'red', '**' .. GetPlayerName(source) .. '** ' .. license .. ' deleted **' .. citizenid .. '**..')
@@ -723,6 +763,8 @@ function HexaCore.ForceDeleteCharacter(citizenid)
             local v = playertables[i]
             queries[i] = { query = query:format(v.table), values = { citizenid } }
         end
+
+        itemsUnreadable[citizenid] = nil
 
         MySQL.transaction(queries, function(result2)
             if result2 then
@@ -823,33 +865,57 @@ function HexaCore.CreateCitizenId()
     return fallback
 end
 
+-- คิวรีเช็คซ้ำพวกนี้สแกน metadata ทั้งตาราง ถ้าคืน nil (DB สะดุด) การเรียกซ้ำตัวเองแบบเดิมจะวนไม่รู้จบคาเธรด login จึงต้องมีเพดานรอบ
+local UNIQUE_ID_TRIES = 10
+
 function HexaCore.CreateAccountNumber()
-    local AccountNumber = 'US0' .. math.random(1, 9) .. 'HexaCore' .. math.random(1111, 9999) .. math.random(1111, 9999) .. math.random(11, 99)
-    -- account ถูกฝากไว้ใน metadata (ตาราง users ไม่มีคอลัมน์ charinfo)
-    local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.account")) = ?) AS uniqueCheck', { AccountNumber })
-    if result == 0 then return AccountNumber end
-    return HexaCore.CreateAccountNumber()
+    local AccountNumber
+    for _ = 1, UNIQUE_ID_TRIES do
+        AccountNumber = 'US0' .. math.random(1, 9) .. 'HexaCore' .. math.random(1111, 9999) .. math.random(1111, 9999) .. math.random(11, 99)
+        -- account ถูกฝากไว้ใน metadata (ตาราง users ไม่มีคอลัมน์ charinfo)
+        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.account")) = ?) AS uniqueCheck', { AccountNumber })
+        if result == 0 then return AccountNumber end
+    end
+
+    -- ยอมคืนค่าล่าสุดที่ยังยืนยันไม่ได้ ดีกว่าปล่อยให้ผู้เล่นค้างหน้าโหลดเพราะคิวรีไม่ยอมตอบ
+    Hexa.Warn('could not confirm a unique account number in %d tries, using %s', UNIQUE_ID_TRIES, tostring(AccountNumber))
+    return AccountNumber
 end
 
 function HexaCore.CreateFingerprint()
-    local FingerId = tostring(HexaCore.Shared.RandomStr(2) .. HexaCore.Shared.RandomInt(3) .. HexaCore.Shared.RandomStr(1) .. HexaCore.Shared.RandomInt(2) .. HexaCore.Shared.RandomStr(3) .. HexaCore.Shared.RandomInt(4))
-    local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.fingerprint")) = ?) AS uniqueCheck', { FingerId })
-    if result == 0 then return FingerId end
-    return HexaCore.CreateFingerprint()
+    local FingerId
+    for _ = 1, UNIQUE_ID_TRIES do
+        FingerId = tostring(HexaCore.Shared.RandomStr(2) .. HexaCore.Shared.RandomInt(3) .. HexaCore.Shared.RandomStr(1) .. HexaCore.Shared.RandomInt(2) .. HexaCore.Shared.RandomStr(3) .. HexaCore.Shared.RandomInt(4))
+        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.fingerprint")) = ?) AS uniqueCheck', { FingerId })
+        if result == 0 then return FingerId end
+    end
+
+    Hexa.Warn('could not confirm a unique fingerprint in %d tries, using %s', UNIQUE_ID_TRIES, tostring(FingerId))
+    return FingerId
 end
 
 function HexaCore.CreateWalletId()
-    local WalletId = 'Hexa-' .. math.random(11111111, 99999999)
-    local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.walletid")) = ?) AS uniqueCheck', { WalletId })
-    if result == 0 then return WalletId end
-    return HexaCore.CreateWalletId()
+    local WalletId
+    for _ = 1, UNIQUE_ID_TRIES do
+        WalletId = 'Hexa-' .. math.random(11111111, 99999999)
+        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.walletid")) = ?) AS uniqueCheck', { WalletId })
+        if result == 0 then return WalletId end
+    end
+
+    Hexa.Warn('could not confirm a unique wallet id in %d tries, using %s', UNIQUE_ID_TRIES, tostring(WalletId))
+    return WalletId
 end
 
 function HexaCore.CreatePhoneSerial()
-    local SerialNumber = math.random(11111111, 99999999)
-    local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.phonedata.SerialNumber")) = ?) AS uniqueCheck', { SerialNumber })
-    if result == 0 then return SerialNumber end
-    return HexaCore.CreatePhoneSerial()
+    local SerialNumber
+    for _ = 1, UNIQUE_ID_TRIES do
+        SerialNumber = math.random(11111111, 99999999)
+        local result = MySQL.prepare.await('SELECT EXISTS(SELECT 1 FROM users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.phonedata.SerialNumber")) = ?) AS uniqueCheck', { SerialNumber })
+        if result == 0 then return SerialNumber end
+    end
+
+    Hexa.Warn('could not confirm a unique phone serial in %d tries, using %s', UNIQUE_ID_TRIES, tostring(SerialNumber))
+    return SerialNumber
 end
 
 PaycheckInterval() -- This starts the paycheck system

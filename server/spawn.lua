@@ -11,6 +11,30 @@ local function sendSpawn(src, Player)
     TriggerClientEvent('HexaCore:Client:SpawnPlayer', src, pos, health, gender)
 end
 
+-- ตัวละครเดียวกันอาจยังค้างอยู่คนละ source ถ้า reconnect เร็วกว่า playerDropped ต้องปลดตัวเก่าก่อนสร้างตัวใหม่
+local function releaseStaleSession(citizenid, src)
+    if not citizenid then return end
+
+    local stale = HexaCore.GetPlayerByCitizenId(citizenid)
+    if not stale then return end
+
+    local oldSrc = stale.PlayerData.source
+    if not oldSrc or oldSrc == src then return end
+
+    -- ต้องเซฟก่อนถอด เพราะ SavePlayer หยิบตัวผู้เล่นจาก HexaCore.Players ถอดก่อนแล้วความคืบหน้าของ session เก่าหายทั้งก้อน
+    local ok, err = pcall(stale.Save)
+    if not ok then
+        Hexa.Error('failed to save stale session of %s on id %s: %s', tostring(citizenid), tostring(oldSrc), tostring(err))
+    end
+
+    -- ต้องถอดออกเสมอแม้เซฟพัง ไม่งั้น playerDropped ของ source เก่าจะเซฟข้อมูลก่อน reconnect ทับ session ใหม่ทีหลัง
+    HexaCore.Players[oldSrc] = nil
+    Hexa.Log('character %s reconnected on id %s - released stale session on id %s', tostring(citizenid), tostring(src), tostring(oldSrc))
+
+    -- รอให้คิวเขียนของตัวเก่าลง DB ก่อน ไม่งั้น Login อ่านแถวเดิมกลับมาแล้วเขียนทับสิ่งที่เพิ่งเซฟไป
+    Wait(500)
+end
+
 RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
     local src = source
 
@@ -18,6 +42,10 @@ RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
     if HexaCore.Players[src] then
         return sendSpawn(src, HexaCore.Players[src])
     end
+
+    -- เปิดหน้าเลือกตัวละครอยู่ = หน้านั้นเป็นคนสั่ง login เอง ประตูนี้ต้องปิดฝั่ง server ด้วย ไม่งั้น client ยิง event เองเพื่อข้ามหน้าเลือกได้
+    if HexaCore.Config.MultiCharacter then return end
+
     if spawning[src] then return end -- กำลัง login อยู่ รอรอบนี้จบก่อน
     spawning[src] = true
 
@@ -34,6 +62,8 @@ RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
     local ok, err = pcall(function()
         -- หาตัวละครของ license นี้ (ตาราง users สไตล์ ESX: identifier = license)
         local citizenid = MySQL.scalar.await('SELECT citizenid FROM users WHERE identifier = ? ORDER BY last_seen DESC LIMIT 1', { license })
+        -- ต้องปลดตัวเก่าก่อน Login ไม่งั้นตัวละครเดียวกันมีสอง Player object แล้วตัวเก่าเซฟทับตอน playerDropped ยิงตามมา
+        releaseStaleSession(citizenid, src)
         -- citizenid = nil ได้ -> Login จะสร้างตัวละครใหม่จาก PlayerDefaults ให้เอง
         HexaCore.LoginPlayer(src, citizenid)
     end)

@@ -15,12 +15,21 @@ local function sortedKeys(map)
     return keys
 end
 
-local function decodeJson(raw)
-    if type(raw) == 'table' then return raw end
-    if type(raw) ~= 'string' or raw == '' then return nil end
+-- คืนค่าที่สองเป็นธง "อ่านค่าดิบไม่ออก" เพราะเดิม NULL กับ JSON พังคืน nil เหมือนกัน กลายเป็นกระเป๋าว่างที่ถูกเซฟทับของจริงโดยไม่มี log สักบรรทัด
+local function decodeJson(raw, label)
+    if type(raw) == 'table' then return raw, false end
+    -- คอลัมน์เป็น NULL หรือสตริงว่างคือ "ว่างจริง" ของตัวละครใหม่ ไม่ใช่ความผิดพลาด ห้ามส่งเสียง
+    if raw == nil or raw == '' then return nil, false end
+    if type(raw) ~= 'string' then
+        Hexa.Error('storage: %s is a %s, not JSON text - refusing to decode', label, type(raw))
+        return nil, true
+    end
     local ok, decoded = pcall(json.decode, raw)
-    if not ok or type(decoded) ~= 'table' then return nil end
-    return decoded
+    if not ok or type(decoded) ~= 'table' then
+        Hexa.Error('storage: malformed JSON in %s, refusing to decode: %s', label, raw:sub(1, 120))
+        return nil, true
+    end
+    return decoded, false
 end
 
 -- ==================== inventory (ของทั่วไป) ====================
@@ -62,8 +71,9 @@ end
 --- @param raw string|table ค่าจากคอลัมน์ users.inventory
 --- @return table ลิสต์ { {name=, amount=, slot=, info=}, ... }
 function Storage.DecodeInventory(raw)
-    local decoded = decodeJson(raw)
-    if not decoded then return {} end
+    -- ค่าที่สองคือธงอ่านไม่ออก ผู้เรียกจะได้ไม่เอาลิสต์ว่างไปเซฟทับแถวที่ยังมีของอยู่ ผู้เรียกเดิมที่รับค่าเดียวไม่ได้รับผลกระทบ
+    local decoded, bad = decodeJson(raw, 'inventory')
+    if not decoded then return {}, bad end
 
     local out = {}
 
@@ -79,7 +89,7 @@ function Storage.DecodeInventory(raw)
                 }
             end
         end
-        return sortSlots(out)
+        return sortSlots(out), false
     end
 
     -- รูปแบบ esx เก่า: {name = count} — ไม่มี slot/info ให้กู้ ได้แค่ชื่อกับจำนวน
@@ -89,7 +99,7 @@ function Storage.DecodeInventory(raw)
             out[#out + 1] = { name = tostring(name):lower(), amount = count, info = {} }
         end
     end
-    return out
+    return out, false
 end
 
 -- ==================== loadout (อาวุธ) ====================
@@ -121,8 +131,9 @@ end
 --- @param raw string|table ค่าจากคอลัมน์ users.loadout
 --- @return table ลิสต์ { {name=, slot=, ammo=, components=, tintIndex=, serie=, quality=}, ... }
 function Storage.DecodeLoadout(raw)
-    local decoded = decodeJson(raw)
-    if not decoded then return {} end
+    -- ค่าที่สองคือธงอ่านไม่ออก เหมือน DecodeInventory ปืนหายทั้งกระเป๋าต้องดังกว่านี้
+    local decoded, bad = decodeJson(raw, 'loadout')
+    if not decoded then return {}, bad end
 
     local out = {}
 
@@ -142,7 +153,7 @@ function Storage.DecodeLoadout(raw)
                 }
             end
         end
-        return sortSlots(out)
+        return sortSlots(out), false
     end
 
     -- รูปแบบ esx เก่า: {name = {ammo=, components=, tintIndex=}} — ชื่อละกระบอก
@@ -159,7 +170,7 @@ function Storage.DecodeLoadout(raw)
             }
         end
     end
-    return out
+    return out, false
 end
 
 -- ==================== ประกอบกลับเป็นช่องเก็บของ ====================
@@ -184,9 +195,12 @@ function Storage.BuildSlots(inventoryRaw, loadoutRaw)
         end
     end
 
+    local items, inventoryBad = Storage.DecodeInventory(inventoryRaw)
+
     -- แถวรุ่นเก่า loadout เป็น NULL อาวุธยังปนใน inventory ถ้าไม่ fallback ผู้เล่นเสียปืนหมดและเซฟครั้งถัดไปทับหายถาวร
-    local weapons = Storage.DecodeLoadout(loadoutRaw)
-    if #weapons == 0 then
+    local weapons, loadoutBad = Storage.DecodeLoadout(loadoutRaw)
+    -- fallback เฉพาะตอน inventory อ่านออก ไม่งั้นจะไปแกะค่าดิบที่พังอยู่แล้วซ้ำ แล้ว log ขึ้นซ้ำสองรอบด้วยชื่อคอลัมน์ผิด
+    if #weapons == 0 and not inventoryBad then
         weapons = Storage.DecodeLoadout(inventoryRaw)
     end
 
@@ -205,7 +219,7 @@ function Storage.BuildSlots(inventoryRaw, loadoutRaw)
         })
     end
 
-    for _, item in ipairs(Storage.DecodeInventory(inventoryRaw)) do
+    for _, item in ipairs(items) do
         place({
             name = item.name,
             amount = item.amount,
@@ -222,7 +236,8 @@ function Storage.BuildSlots(inventoryRaw, loadoutRaw)
         out[#out + 1] = entry
     end
 
-    return sortSlots(out)
+    -- ธงตัวที่สองรวมสองคอลัมน์: true เมื่อค่าดิบอันใดอันหนึ่งอ่านไม่ออก ผู้เรียกที่จะเซฟกลับต้องเช็คก่อนเขียนทับ
+    return sortSlots(out), (inventoryBad or loadoutBad)
 end
 
 -- ==================== exports ====================

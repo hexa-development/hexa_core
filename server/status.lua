@@ -28,8 +28,8 @@ local function readStatus(src)
     return out
 end
 
---- เขียนหลายช่องพร้อมกันแล้วบอก client รอบเดียว ช่องที่ไม่รู้จักถูกทิ้ง
-local function writeStatus(src, values)
+--- เขียนหลายช่องพร้อมกันแล้วบอก client รอบเดียว ช่องที่ไม่รู้จักถูกทิ้ง (quiet = ไม่ยิง PlayerData ทั้งก้อน ใช้กับรอบลดค่าตามเวลา)
+local function writeStatus(src, values, quiet)
     local ply = HexaCore.GetPlayer(src)
     if not ply then return nil end
 
@@ -41,8 +41,16 @@ local function writeStatus(src, values)
     end
     if not next(applied) then return nil end
 
-    -- SetMetaData แบบตารางเรียก UpdatePlayerData ให้ครั้งเดียว (ไม่ใช่ครั้งต่อคีย์)
-    ply.SetMetaData(applied)
+    if quiet then
+        -- รอบลดค่าเขียน metadata ตรงแล้วปักธง dirty เอง เพราะ SetMetaData จะ broadcast PlayerData ทั้งก้อนไปทุก resource เพื่อขยับแค่สี่ตัวเลข
+        for key, value in pairs(applied) do
+            ply.PlayerData.metadata[key] = value
+        end
+        ply.MarkDirty()
+    else
+        -- SetMetaData แบบตารางเรียก UpdatePlayerData ให้ครั้งเดียว (ไม่ใช่ครั้งต่อคีย์)
+        ply.SetMetaData(applied)
+    end
 
     -- ต้องมิเรอร์ลง statebag ช่องเดียวกับ InitializeStateBags ใน player.lua สคริปต์อื่นจะได้อ่านได้โดยไม่ต้องขอ core object
     local state = Player(src).state
@@ -50,7 +58,14 @@ local function writeStatus(src, values)
         state:set(key, value, true)
     end
 
-    TriggerClientEvent('HexaCore:Client:UpdateNeeds', src, readStatus(src))
+    -- ประกอบค่าที่จะส่งจาก metadata ที่เพิ่งเขียน แทนการเรียก readStatus ซ้ำซึ่งไปหา GetPlayer ใหม่ทั้งที่ ply อยู่ในมือแล้ว
+    local metadata = ply.PlayerData.metadata or {}
+    local current = {}
+    for _, key in ipairs(StatusKeys) do
+        current[key] = applied[key] or clamp(metadata[key])
+    end
+
+    TriggerClientEvent('HexaCore:Client:UpdateNeeds', src, current)
     return applied
 end
 
@@ -66,21 +81,34 @@ CreateThread(function()
 
         cfg = statusConfig()
         if cfg and cfg.Enabled and type(cfg.Drain) == 'table' then
+            -- ก็อปรายชื่อไว้ก่อนวน เพราะรอบนี้มี Wait คั่น ถ้ามีคน login เพิ่มระหว่างทาง pairs() บนตารางเดิมจะพัง
+            local sources = {}
             for _, ply in pairs(HexaCore.Players or {}) do
-                local src = ply.PlayerData.source
-                local metadata = ply.PlayerData.metadata or {}
+                sources[#sources + 1] = ply.PlayerData.source
+            end
 
-                -- คนที่นอนตายอยู่ไม่ควรหิวเพิ่ม — ไม่งั้นฟื้นมาเลือดหมดซ้ำทันที
-                if not metadata.isdead then
-                    local next_ = {}
-                    for _, key in ipairs(StatusKeys) do
-                        local rate = tonumber(cfg.Drain[key])
-                        if rate and rate ~= 0 then
-                            next_[key] = clamp((tonumber(metadata[key]) or 100) - rate)
+            for index = 1, #sources do
+                -- ผู้เล่นอาจหลุดไประหว่างที่รอบนี้เดินอยู่ ต้องหยิบใหม่ทุกครั้งไม่ใช้ตัวที่ปิดทับไว้
+                local ply = HexaCore.GetPlayer(sources[index])
+                if ply then
+                    local src = ply.PlayerData.source
+                    local metadata = ply.PlayerData.metadata or {}
+
+                    -- คนที่นอนตายอยู่ไม่ควรหิวเพิ่ม — ไม่งั้นฟื้นมาเลือดหมดซ้ำทันที
+                    if not metadata.isdead then
+                        local next_ = {}
+                        for _, key in ipairs(StatusKeys) do
+                            local rate = tonumber(cfg.Drain[key])
+                            if rate and rate ~= 0 then
+                                next_[key] = clamp((tonumber(metadata[key]) or 100) - rate)
+                            end
                         end
+                        if next(next_) then writeStatus(src, next_, true) end
                     end
-                    if next(next_) then writeStatus(src, next_) end
                 end
+
+                -- เกลี่ยงานออกหลายติก ไม่ให้ทุกคนถูกคำนวณและยิง event พร้อมกันในติกเดียว
+                if index % 10 == 0 then Wait(0) end
             end
         end
     end
