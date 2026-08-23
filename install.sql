@@ -53,9 +53,8 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- ------------------------------------------------------------
 -- migration: ตาราง users เวอร์ชันแรกตั้ง PRIMARY KEY เป็น identifier
 -- ทำให้ 1 คนมีได้ตัวละครเดียว + สร้างตัวใหม่ไปทับตัวเก่า
--- ย้าย PK มาที่ citizenid (DB ที่สร้างใหม่จะ fail แบบ benign แล้วข้ามไป)
+-- ย้าย PK มาที่ citizenid ทำใน server/installer.lua (migrateUsersPrimaryKey) ไม่ใช่ตรงนี้ เพราะ DROP PRIMARY KEY + ADD PRIMARY KEY ไม่ error บน DB ที่ย้ายแล้ว แต่สั่ง rebuild ตาราง users ทั้งใบซ้ำทุกครั้งที่บูต
 -- ------------------------------------------------------------
-ALTER TABLE `users` DROP PRIMARY KEY, ADD PRIMARY KEY (`citizenid`);
 ALTER TABLE `users` DROP INDEX `idx_users_citizenid`;
 ALTER TABLE `users` ADD INDEX `idx_users_identifier` (`identifier`);
 

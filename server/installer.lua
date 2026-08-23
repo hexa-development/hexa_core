@@ -68,6 +68,43 @@ local function splitStatements(sql)
     return statements
 end
 
+-- เดิมอยู่ใน install.sql แล้วถูกรันทุกบูต ซึ่ง MySQL ไม่ error แต่ rebuild ตาราง users ทั้งใบทุกครั้ง เวลาบูตจึงโตตามจำนวนตัวละครและกินโควตา AwaitSchemaReady
+local USERS_PK_MIGRATION = 'ALTER TABLE `users` DROP PRIMARY KEY, ADD PRIMARY KEY (`citizenid`)'
+
+-- ถามสคีมาว่า PK ของ users เป็น citizenid คอลัมน์เดียวหรือยัง จะได้ข้าม ALTER ที่ไม่มีอะไรให้ทำ
+local function usersPrimaryKeyIsCitizenId()
+    local rows = MySQL.query.await(
+        "SELECT `COLUMN_NAME` AS `col` FROM `information_schema`.`STATISTICS`" ..
+        " WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'users' AND `INDEX_NAME` = 'PRIMARY'" ..
+        " ORDER BY `SEQ_IN_INDEX`"
+    ) or {}
+    -- ไม่มีแถวเลย = ยังไม่มีตาราง users (หรือไม่มี PK) ปล่อยให้ CREATE TABLE ใน install.sql สร้าง PK ที่ถูกต้องเอง อย่าไป DROP ของที่ไม่มีอยู่
+    if #rows == 0 then return true end
+    return #rows == 1 and tostring(rows[1].col):lower() == 'citizenid'
+end
+
+-- คืนจำนวน statement ที่ล้มเหลว เพื่อให้นับรวมกับลูปหลักได้
+local function migrateUsersPrimaryKey()
+    local ok, isMigrated = pcall(usersPrimaryKeyIsCitizenId)
+    if not ok then
+        -- อ่านสคีมาไม่ได้ก็ข้ามไปเลย ดีกว่าเดาแล้วไป rebuild ตารางทิ้ง
+        printLog('warning', ('Could not read the users primary key - skipping the citizenid migration: %s'):format(isMigrated))
+        return 0
+    end
+    if isMigrated then return 0 end
+
+    printLog('warning', 'Migrating the users primary key to citizenid - this rebuilds the table once and may take a while.')
+    local done, err = pcall(function()
+        MySQL.query.await(USERS_PK_MIGRATION)
+    end)
+    if not done and not isBenign(err) then
+        printLog('error', ('Auto-install statement failed: %s'):format(err))
+        printLog('error', ('  statement: %s'):format(USERS_PK_MIGRATION))
+        return 1
+    end
+    return 0
+end
+
 local function runInstall()
     local sql = LoadResourceFile(resourceName, 'install.sql')
     if not sql or sql == '' then
@@ -81,7 +118,8 @@ local function runInstall()
         return
     end
 
-    local failed = 0
+    -- ต้องมาก่อนลูป เพื่อให้ลำดับเทียบเท่าตอนที่ ALTER ตัวนี้ยังเป็น statement ที่ 2 ของ install.sql
+    local failed = migrateUsersPrimaryKey()
     for _, statement in ipairs(statements) do
         local ok, err = pcall(function()
             MySQL.query.await(statement)
