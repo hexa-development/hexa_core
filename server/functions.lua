@@ -44,6 +44,16 @@ end
 ---@param identifier string
 ---@return number
 function HexaCore.GetSourceByIdentifier(identifier)
+    if not identifier then return 0 end
+
+    -- รอบแรกเทียบ PlayerData.license ที่ถืออยู่แล้ว (มาจาก GetIdentifier ตัวเดียวกัน) จึงไม่ต้องจองตาราง identifier ต่อผู้เล่นหนึ่งคน
+    for src, ply in pairs(HexaCore.Players) do
+        if ply.PlayerData and ply.PlayerData.license == identifier then
+            return src
+        end
+    end
+
+    -- รอบสองไว้รับ identifier ชนิดอื่น (steam/discord/ip) ที่ไม่ได้เก็บใน PlayerData เท่านั้น
     for src, _ in pairs(HexaCore.Players) do
         local idens = GetPlayerIdentifiers(src)
         for _, id in pairs(idens) do
@@ -495,14 +505,26 @@ end
 
 -- Callback Functions --
 
+-- ตั๋วประจำการเรียกแต่ละครั้ง คีย์ด้วยชื่ออย่างเดียวทำให้ถามผู้เล่นสองคนพร้อมกันแล้วคำตอบไขว้ตัวกัน
+local clientRequestId = 0
+
 ---Trigger Client Callback
 ---@param name string
 ---@param source any
 ---@param cb function
 ---@param ... any
 function HexaCore.TriggerClientCallback(name, source, cb, ...)
-    HexaCore.ClientCallbacks[name] = cb
-    TriggerClientEvent('HexaCore:Client:TriggerClientCallback', source, name, ...)
+    -- ต้องแปลงเป็นตัวเลขก่อนใช้เป็นคีย์ ไม่งั้นคนเรียกที่ส่ง source มาเป็น string จะหาคิวไม่เจอตอนคำตอบกลับมา
+    local src = tonumber(source)
+    if not src then return end
+    clientRequestId = clientRequestId + 1
+    local pending = HexaCore.ClientCallbacks[src]
+    if not pending then
+        pending = {}
+        HexaCore.ClientCallbacks[src] = pending
+    end
+    pending[clientRequestId] = cb
+    TriggerClientEvent('HexaCore:Client:TriggerClientCallback', src, name, clientRequestId, ...)
 end
 
 ---Create Server Callback

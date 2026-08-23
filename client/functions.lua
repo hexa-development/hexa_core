@@ -56,9 +56,13 @@ function HexaCore.TriggerClientCallback(name, cb, ...)
     HexaCore.ClientCallbacks[name](cb, ...)
 end
 
+-- ตั๋วประจำการเรียกแต่ละครั้ง เก็บ cb ตามชื่ออย่างเดียวทำให้ยิงชื่อเดียวกันซ้อนกันแล้วคำตอบไขว้กันหรือหายไปเลย
+local requestId = 0
+
 function HexaCore.TriggerCallback(name, cb, ...)
-    HexaCore.ServerCallbacks[name] = cb
-    TriggerServerEvent('HexaCore:Server:TriggerCallback', name, ...)
+    requestId = requestId + 1
+    HexaCore.ServerCallbacks[requestId] = cb
+    TriggerServerEvent('HexaCore:Server:TriggerCallback', name, requestId, ...)
 end
 
 -- ใช้ Core.PrintDebug/Core.DumpTable ที่ shared/log.lua แทน HexaCore.Debug เดิมที่ชน signature ฝั่ง server (docs guide/logging)
@@ -521,29 +525,24 @@ end
 
 -- Unused
 
+-- ชุด SetTextFont/BeginTextCommandDisplayText/AddTextComponentSubstringPlayerName เป็นของ GTA V ไม่มีใน RDR3 เรียกแล้วตายที่บรรทัดแรก ต้องใช้สาย CreateVarString+DisplayText แบบ client/drawtext.lua
 function HexaCore.DrawText(x, y, width, height, scale, r, g, b, a, text)
     -- Use local function instead
-    SetTextFont(4)
     SetTextScale(scale, scale)
-    SetTextColour(r, g, b, a)
-    BeginTextCommandDisplayText('STRING')
-    AddTextComponentSubstringPlayerName(text)
-    EndTextCommandDisplayText(x - width / 2, y - height / 2 + 0.005)
+    SetTextColor(r, g, b, a)
+    DisplayText(CreateVarString(10, 'LITERAL_STRING', text), x - width / 2, y - height / 2 + 0.005)
 end
 
 function HexaCore.DrawText3D(x, y, z, text)
     -- Use local function instead
-    SetTextScale(0.35, 0.35)
-    SetTextFont(4)
-    SetTextProportional(1)
-    SetTextColour(255, 255, 255, 215)
-    BeginTextCommandDisplayText('STRING')
-    SetTextCentre(true)
-    AddTextComponentSubstringPlayerName(text)
     SetDrawOrigin(x, y, z, 0)
-    EndTextCommandDisplayText(0.0, 0.0)
+    -- พื้นหลังต้องวาดก่อนตัวอักษร ไม่งั้นแผ่นดำทับข้อความที่เพิ่งวาดไป
     local factor = (string.len(text)) / 370
     DrawRect(0.0, 0.0 + 0.0125, 0.017 + factor, 0.03, 0, 0, 0, 75)
+    SetTextScale(0.35, 0.35)
+    SetTextColor(255, 255, 255, 215)
+    SetTextCentre(true)
+    DisplayText(CreateVarString(10, 'LITERAL_STRING', text), 0.0, 0.0)
     ClearDrawOrigin()
 end
 

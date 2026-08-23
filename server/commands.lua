@@ -104,11 +104,12 @@ HexaCore.Commands.Add('tp', Lang:t('command.tp.help'), { { name = Lang:t('comman
         end
     else
         if args[1] and args[2] and args[3] then
-            local x = tonumber((args[1]:gsub(',', ''))) + .0
-            local y = tonumber((args[2]:gsub(',', ''))) + .0
-            local z = tonumber((args[3]:gsub(',', ''))) + .0
-            if x ~= 0 and y ~= 0 and z ~= 0 then
-                TriggerClientEvent('HexaCore:Command:TeleportToCoords', source, x, y, z)
+            -- ต้องแปลงแล้วเช็ค nil ก่อนบวก .0 ไม่งั้นพิมพ์ผิดตัวเดียวได้ Lua error และผู้เล่นไม่เห็นอะไรเลย (เดิมเช็ค ~= 0 ซึ่งตัดแกนที่เป็น 0 พอดีทิ้งด้วย)
+            local x = tonumber((args[1]:gsub(',', '')))
+            local y = tonumber((args[2]:gsub(',', '')))
+            local z = tonumber((args[3]:gsub(',', '')))
+            if x and y and z then
+                TriggerClientEvent('HexaCore:Command:TeleportToCoords', source, x + .0, y + .0, z + .0)
             else
                 HexaCore.Notify(source, {title = Lang:t('error.wrong_format'), type = 'error', duration = 5000 })
             end

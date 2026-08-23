@@ -61,18 +61,29 @@ AddEventHandler('playerConnecting', onPlayerConnecting)
 -- Callback Events --
 
 -- Client Callback
-RegisterNetEvent('HexaCore:Server:TriggerClientCallback', function(name, ...)
-    if HexaCore.ClientCallbacks[name] then
-        HexaCore.ClientCallbacks[name](...)
-        HexaCore.ClientCallbacks[name] = nil
-    end
+RegisterNetEvent('HexaCore:Server:TriggerClientCallback', function(name, id, ...)
+    local src = source
+    -- คิวอยู่ใต้ src ของคนที่ถูกถาม ผู้เล่นอื่นจึงเอื้อมไปกินคำตอบหรือล้างคิวของคนอื่นไม่ได้เลย
+    local pending = HexaCore.ClientCallbacks[src]
+    local cb = pending and pending[id]
+    if not cb then return end
+    pending[id] = nil
+    if not next(pending) then HexaCore.ClientCallbacks[src] = nil end
+    cb(...)
+end)
+
+-- คำถามที่ยังไม่ได้คำตอบของคนที่ออกไปแล้วต้องทิ้ง ไม่งั้นคิวถือ closure ค้างไว้ตลอดอายุเซิร์ฟ
+AddEventHandler('playerDropped', function()
+    HexaCore.ClientCallbacks[source] = nil
 end)
 
 -- Server Callback
-RegisterNetEvent('HexaCore:Server:TriggerCallback', function(name, ...)
+RegisterNetEvent('HexaCore:Server:TriggerCallback', function(name, id, ...)
     local src = source
+    -- id เป็นแค่ตั๋วที่ส่งกลับให้คนเดิม ต้องเป็นตัวเลขเท่านั้น กัน payload ปลอมยัดของแปลกเข้าคีย์ฝั่ง client
+    if type(id) ~= 'number' then return end
     HexaCore.TriggerCallback(name, src, function(...)
-        TriggerClientEvent('HexaCore:Client:TriggerCallback', src, name, ...)
+        TriggerClientEvent('HexaCore:Client:TriggerCallback', src, name, id, ...)
     end, ...)
 end)
 
@@ -100,7 +111,8 @@ local CLIENT_SETTABLE_META = {
     hunger = true, thirst = true, cleanliness = true, stress = true,
 }
 
-RegisterNetEvent('HexaCore:Server:SetMetaData', function(meta, data)
+-- ต้องเป็น AddEventHandler ไม่ใช่ RegisterNetEvent ไม่งั้น client ตรึงหิว/กระหายของตัวเองได้ ลบล้างรอบลดค่าที่ย้ายมาฝั่ง server ทั้งหมด
+AddEventHandler('HexaCore:Server:SetMetaData', function(meta, data)
     local src = source
     if type(meta) ~= 'string' or not CLIENT_SETTABLE_META[meta] then
         return Hexa.Log('security id %s tried to set metadata key %s', src, tostring(meta))

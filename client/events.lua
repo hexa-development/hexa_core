@@ -107,7 +107,8 @@ RegisterNetEvent('HexaCore:Command:GoToMarker', function()
         Citizen.InvokeNative(0x028F76B6E78246EB, ped, mount, -1)
     end
 
-    if vehicle then
+    -- GetVehiclePedIsIn คืน 0 ตอนไม่ได้อยู่ในพาหนะ และ 0 ใน Lua เป็นค่าจริง ต้องเทียบ ~= 0 เองเหมือนด่าน mount ข้างบน
+    if vehicle and vehicle ~= 0 then
         SetEntityCoords(vehicle, coords.x, coords.y, groundZ + 3.0)
         PlacePedOnGroundProperly(vehicle, coords)
         Citizen.InvokeNative(0x028F76B6E78246EB, ped, vehicle, -1)
@@ -182,18 +183,20 @@ end)
 -- Callback Events --
 
 -- Client Callback
-RegisterNetEvent('HexaCore:Client:TriggerClientCallback', function(name, ...)
+RegisterNetEvent('HexaCore:Client:TriggerClientCallback', function(name, id, ...)
+    -- ต้องส่ง id กลับไปด้วย ฝั่ง server ใช้คู่ (src, id) หาคิวที่รออยู่ ถ้าส่งแต่ชื่อจะไปกินคิวของคนอื่นได้
     HexaCore.TriggerClientCallback(name, function(...)
-        TriggerServerEvent('HexaCore:Server:TriggerClientCallback', name, ...)
+        TriggerServerEvent('HexaCore:Server:TriggerClientCallback', name, id, ...)
     end, ...)
 end)
 
 -- Server Callback
-RegisterNetEvent('HexaCore:Client:TriggerCallback', function(name, ...)
-    if HexaCore.ServerCallbacks[name] then
-        HexaCore.ServerCallbacks[name](...)
-        HexaCore.ServerCallbacks[name] = nil
-    end
+RegisterNetEvent('HexaCore:Client:TriggerCallback', function(name, id, ...)
+    -- หยิบด้วย id ของการเรียกครั้งนั้น ไม่ใช่ชื่อ ไม่งั้นสองคำขอชื่อเดียวกันจะสลับคำตอบกัน
+    local cb = HexaCore.ServerCallbacks[id]
+    if not cb then return end
+    HexaCore.ServerCallbacks[id] = nil
+    cb(...)
 end)
 
 -- คำสั่ง me: rb_thaifont แค่สตรีม ThaiFont.gfx ต้อง register เอง และ RegisterFontId คืน -1 ช่วงแรก จึง poll+cache
