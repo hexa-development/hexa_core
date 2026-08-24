@@ -1,7 +1,7 @@
 # hexa_core
 
 The core framework for **RedM** roleplay servers - players, jobs, items, money, status, callbacks and
-permissions in a single resource, on an ESX-style database layout.
+permissions in a single resource, on a flat relational database layout.
 
 Documentation: [hexa-development.github.io/hexa-docs](https://hexa-development.github.io/hexa-docs/)
 &nbsp;|&nbsp; [ภาษาไทย](https://hexa-development.github.io/hexa-docs/th/)
@@ -10,8 +10,8 @@ Documentation: [hexa-development.github.io/hexa-docs](https://hexa-development.g
 
 - **Built for RedM.** Native support for RDR2 systems: prompts, eagle eye, IPLs and interiors,
   density control, the gold attribute cores, and a customised minimap.
-- **ESX-style database.** A `users` table keyed by `identifier`, with an automatic schema installer
-  (`install.sql`) that runs on first boot.
+- **Self-installing database.** A `users` table keyed by `identifier`, with an automatic schema
+  installer (`install.sql`) that runs on first boot.
 - **A complete player object.** Multiple money types, weighted and slotted inventory, jobs with duty
   state, metadata, and needs (hunger, thirst, cleanliness, stress).
 - **Two-way callbacks.** `CreateCallback` and `TriggerCallback` between client and server, useable

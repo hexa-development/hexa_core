@@ -28,7 +28,7 @@ function Core.Commands.Add(name, help, arguments, argsrequired, callback, permis
     if not permission then permission = 'user' end           -- some commands don't pass permission level
     if permission == 'user' then restricted = false end      -- allow all users to use command
 
-    RegisterCommand(name, function(source, args, rawCommand) -- Register command within fivem
+    RegisterCommand(name, function(source, args, rawCommand) -- Register command with the server
         if argsrequired and #args < #arguments then
             return Core.Notify(source, {
                 title = 'System',

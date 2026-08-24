@@ -60,7 +60,7 @@ RegisterNetEvent('HexaCore:Server:RequestSpawn', function()
 
     -- ต้องครอบ pcall ให้ spawning ถูกเคลียร์เสมอ ไม่งั้น error ครั้งเดียว = ผู้เล่นขอ spawn ใหม่ไม่ได้อีกเลย
     local ok, err = pcall(function()
-        -- หาตัวละครของ license นี้ (ตาราง users สไตล์ ESX: identifier = license)
+        -- หาตัวละครของ license นี้ (ตาราง users: identifier = license)
         local citizenid = Db.Scalar('SELECT citizenid FROM users WHERE identifier = ? ORDER BY last_seen DESC LIMIT 1', { license })
         -- ต้องปลดตัวเก่าก่อน Login ไม่งั้นตัวละครเดียวกันมีสอง Player object แล้วตัวเก่าเซฟทับตอน playerDropped ยิงตามมา
         releaseStaleSession(citizenid, src)

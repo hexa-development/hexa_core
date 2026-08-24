@@ -3,8 +3,8 @@
 -- ============================================================
 -- ติดตั้งอัตโนมัติโดย server/installer.lua ไม่ต้อง import เอง
 --
--- โครงสร้างสไตล์ ESX: ตาราง users คีย์ด้วย identifier (license)
--- คอลัมน์แยกตามแบบ esx_core (accounts, job, job_grade, firstname, ...)
+-- ตาราง users คีย์ด้วย identifier (license)
+-- คอลัมน์แยกกันชัดเจน (accounts, job, job_grade, firstname, ...)
 -- เพิ่ม citizenid ไว้เป็นเลขประจำตัวแบบเรียงลำดับ (ใช้กับคำสั่ง admin
 -- และตารางของ resource อื่นที่อ้างอิงตัวละครด้วย citizenid)
 --
@@ -12,19 +12,19 @@
 -- รันซ้ำทุกครั้งที่บูตได้อย่างปลอดภัย
 
 -- ------------------------------------------------------------
--- users (สไตล์ ESX)
+-- users
 -- ------------------------------------------------------------
 -- identifier = steam hex / license ของผู้เล่น (1 คน มีได้หลายตัวละคร -> ไม่ใช่ PRIMARY KEY)
 -- citizenid  = เลขประจำตัวละคร = PRIMARY KEY (1 แถว = 1 ตัวละคร)
 --              *สำคัญ* ถ้าตั้ง PK เป็น identifier จะได้แค่ 1 ตัวละครต่อคน
 --              และการ INSERT ... ON DUPLICATE KEY UPDATE จะไปทับตัวละครเดิมทิ้ง
 -- accounts   = json เงินทุกประเภท {cash, bank, gold} (bank = บัญชีธนาคารรวมทุกสาขา)
--- inventory  = json ของทั่วไปแบบ esx {"bread":2,"water":1} (*ไม่รวมอาวุธ*)
--- loadout    = json อาวุธแบบ esx {"weapon_revolver_navy":{"ammo":24,"components":[],"tintIndex":0}}
+-- inventory  = json ของทั่วไป {"bread":2,"water":1} (*ไม่รวมอาวุธ*)
+-- loadout    = json อาวุธ {"weapon_revolver_navy":{"ammo":24,"components":[],"tintIndex":0}}
 --              อาวุธแยกออกจาก inventory เด็ดขาด ตัวตัดสินคือ Shared.IsWeapon()
 --              แถวเก่าที่อาวุธยังปนอยู่ใน inventory จะถูกแปลงให้อัตโนมัติโดย server/storage.lua
 -- metadata   = json สถานะทั้งหมด (hunger, thirst, isdead, fingerprint, ...)
--- status     = json สถานะแบบย่อสไตล์ ESX {hunger, thirst, cleanliness, stress}
+-- status     = json สถานะแบบย่อ {hunger, thirst, cleanliness, stress}
 CREATE TABLE IF NOT EXISTS `users` (
     `identifier` VARCHAR(60) NOT NULL,
     `citizenid` VARCHAR(50) NOT NULL,
@@ -59,7 +59,7 @@ ALTER TABLE `users` DROP INDEX `idx_users_citizenid`;
 ALTER TABLE `users` ADD INDEX `idx_users_identifier` (`identifier`);
 
 -- ------------------------------------------------------------
--- migration: คอลัมน์ inventory / loadout (โครงเก็บของแบบ esx_core)
+-- migration: คอลัมน์ inventory / loadout
 -- ------------------------------------------------------------
 -- DB ที่สร้างก่อนมีคอลัมน์พวกนี้ต้องเติมเข้าไป (DB ใหม่จะ fail แบบ benign แล้วข้ามไป)
 -- การย้ายข้อมูลอาวุธจาก inventory เดิมไป loadout ทำใน server/storage.lua
@@ -68,11 +68,11 @@ ALTER TABLE `users` ADD COLUMN `inventory` LONGTEXT DEFAULT NULL;
 ALTER TABLE `users` ADD COLUMN `loadout` LONGTEXT DEFAULT NULL;
 
 -- ------------------------------------------------------------
--- jobs + job_grades (สไตล์ ESX)
+-- jobs + job_grades
 -- ------------------------------------------------------------
 -- อาชีพทั้งหมดโหลดจาก 2 ตารางนี้ตอน server บูต (server/jobs.lua)
 -- shared/jobs.lua เป็นแค่ค่า fallback ถ้าตารางว่าง
--- คอลัมน์เสริมจาก ESX มาตรฐาน: type, default_duty, offduty_pay, isboss (ของ hexa)
+-- คอลัมน์เสริมของ hexa: type, default_duty, offduty_pay, isboss
 CREATE TABLE IF NOT EXISTS `jobs` (
     `name` VARCHAR(50) NOT NULL,
     `label` VARCHAR(100) DEFAULT NULL,
@@ -132,7 +132,7 @@ INSERT IGNORE INTO `job_grades` (`job_name`, `grade`, `name`, `label`, `salary`,
     ('medic', 4, 'Manager', 'Manager', 100, 1);
 
 -- ------------------------------------------------------------
--- items (โครงสร้างตรงตาม esx_core 100%)
+-- items
 -- ------------------------------------------------------------
 -- ไอเทมทั้งหมดโหลดจากตารางนี้ตอน server บูต (server/items.lua)
 CREATE TABLE IF NOT EXISTS `items` (
@@ -224,8 +224,8 @@ INSERT IGNORE INTO `items` (`name`, `label`, `weight`) VALUES
 --  อยู่พร้อมกันจะพังแบบเงียบๆ ยากกว่าเดิม)
 --
 -- โครงเก็บของเหมือนตาราง users ทุกประการ (ใช้ codec ชุดเดียวกันใน server/storage.lua):
---   items    = ของทั่วไปแบบ esx  {"bread":2,"water":1}   (*ไม่รวมอาวุธ*)
---   loadout  = อาวุธแบบ esx      {"weapon_bow":{"ammo":0,"components":[],"tintIndex":0,"serie":"..."}}
+--   items    = ของทั่วไป  {"bread":2,"water":1}   (*ไม่รวมอาวุธ*)
+--   loadout  = อาวุธ            {"weapon_bow":{"ammo":0,"components":[],"tintIndex":0,"serie":"..."}}
 --
 -- ของเดิมคอลัมน์ items เก็บ "ช่องเก็บของทั้งก้อน" ดิบ ๆ ซึ่งซ้ำซ้อนกับแคตตาล็อกไอเทม
 -- ทุกแถว (image/label/description/weight/type/unique/useable/shouldClose อ่านจาก

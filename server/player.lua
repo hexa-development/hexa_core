@@ -9,14 +9,14 @@ local resourceName = GetCurrentResourceName()
 local STATE_BAG_KEYS = { 'health' }
 for _, key in ipairs(Shared.StatusKeys) do STATE_BAG_KEYS[#STATE_BAG_KEYS + 1] = key end
 
--- คอลัมน์ status แบบย่อสไตล์ ESX เขียนตามคอนฟิก จะได้ไม่ตกหล่นเวลามีสถานะใหม่
+-- คอลัมน์ status แบบย่อ เขียนตามคอนฟิก จะได้ไม่ตกหล่นเวลามีสถานะใหม่
 local function buildStatusColumn(metadata)
     local out = {}
     for _, key in ipairs(Shared.StatusKeys) do out[key] = metadata[key] end
     return out
 end
 
--- ตัวแปลงแถว users (สไตล์ ESX) กับ PlayerData: DB เก็บคอลัมน์แยกแต่ในเกมใช้โครงเดิม โค้ดส่วนอื่นจึงไม่ต้องแก้
+-- ตัวแปลงแถว users กับ PlayerData: DB เก็บคอลัมน์แยกแต่ในเกมใช้โครงเดิม โค้ดส่วนอื่นจึงไม่ต้องแก้
 
 -- ตัวละครที่อ่านคอลัมน์ inventory/loadout ไม่ออก คีย์ด้วย citizenid เพราะต้องคุมทั้งตัวที่ออนไลน์และ offline object ที่ไม่มี source
 local itemsUnreadable = {}
@@ -74,7 +74,7 @@ local function BuildUserRow(PlayerData, coords)
         inventory = json.encode(Core.Storage.EncodeInventory(PlayerData.items)),
         loadout = json.encode(Core.Storage.EncodeLoadout(PlayerData.items)),
         metadata = json.encode(metadata),
-        -- คอลัมน์ status แบบย่อสไตล์ ESX (เผื่อเครื่องมือภายนอกอ่าน)
+        -- คอลัมน์ status แบบย่อ (เผื่อเครื่องมือภายนอกอ่าน)
         status = json.encode(buildStatusColumn(metadata)),
         is_dead = metadata.isdead and 1 or 0,
     }
@@ -677,7 +677,7 @@ function Core.SetPlayerField(ids, fieldName, data)
     end
 end
 
--- Save player info to database (ตาราง users สไตล์ ESX คีย์ด้วย identifier)
+-- Save player info to database (ตาราง users คีย์ด้วย identifier)
 
 --- @param skipPosition boolean|nil ข้ามการอ่านพิกัดสดจาก ped แล้วคงตำแหน่งเดิมใน PlayerData ไว้
 function Core.SavePlayer(source, skipPosition)

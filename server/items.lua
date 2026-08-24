@@ -10,11 +10,11 @@ local MONEY_ITEMS = {
     blood_money_clip = { label = 'Blood Money Clip', weight = 0 },
 }
 
--- ต้องรวมอาวุธเข้าที่นี่ เพราะตาราง items โครง esx ไม่มีคอลัมน์ type ทุกแถวจึงเป็น 'item' แล้ว hexa_inventory มองไม่เห็นอาวุธ
+-- ต้องรวมอาวุธเข้าที่นี่ เพราะตาราง items ไม่มีคอลัมน์ type ทุกแถวจึงเป็น 'item' แล้ว hexa_inventory มองไม่เห็นอาวุธ
 local function buildCatalogue(rows)
     local items = {}
 
-    -- 1. ไอเทมจากฐานข้อมูล: โครง esx_core 100% ฟิลด์ที่ ESX ไม่มีแต่ inventory ใช้ ต้องเติม default ตรงนี้
+    -- 1. ไอเทมจากฐานข้อมูล: ตาราง items มีแค่ห้าคอลัมน์ ฟิลด์ที่ตารางไม่มีแต่ inventory ใช้ ต้องเติม default ตรงนี้
     for _, row in ipairs(rows or {}) do
         items[row.name] = {
             name = row.name,
@@ -22,11 +22,11 @@ local function buildCatalogue(rows)
             weight = tonumber(row.weight) or 1,
             rare = row.rare == 1,
             canRemove = row.can_remove == 1,
-            -- ค่า default สำหรับฟิลด์นอกเหนือ ESX
+            -- ค่า default สำหรับฟิลด์ที่ไม่มีคอลัมน์ในตาราง
             type = 'item',
             image = row.name .. '.png', -- ตามธรรมเนียมรูปไอเทมชื่อเดียวกับ item name
             unique = false,
-            useable = true, -- ใช้ได้จริงหรือไม่ตัดสินที่การลงทะเบียน CreateUseableItem เหมือน ESX.RegisterUsableItem
+            useable = true, -- ใช้ได้จริงหรือไม่ตัดสินที่การลงทะเบียน Core.CreateUseableItem
             shouldClose = true,
         }
     end

@@ -1,4 +1,4 @@
--- hexa_core - รูปแบบการเก็บของในตัว/อาวุธ (โครง esx_core)
+-- hexa_core - รูปแบบการเก็บของในตัว/อาวุธ
 
 -- อาวุธแยกไป users.loadout ไม่ปนใน users.inventory ตัดสินด้วย Shared.IsWeapon ตัวเดียว - ดู docs guide/persistence
 
@@ -34,7 +34,7 @@ end
 
 -- ==================== inventory (ของทั่วไป) ====================
 
---- เรียงตามเลขช่องแล้วค่อยชื่อ ของที่ไม่มีเลขช่อง (แถวรูปแบบ esx เก่า) ไปต่อท้ายเสมอ
+--- เรียงตามเลขช่องแล้วค่อยชื่อ ของที่ไม่มีเลขช่อง (แถวรูปแบบเก่า) ไปต่อท้ายเสมอ
 local function sortSlots(list)
     table.sort(list, function(a, b)
         local sa = a.slot or math.huge
@@ -67,7 +67,7 @@ function Storage.EncodeInventory(items)
     return sortSlots(out)
 end
 
---- รูปแบบเซฟ -> ลิสต์ช่อง อ่านได้ทั้ง array รูปแบบปัจจุบัน และ {name: count} แบบ esx เก่า
+--- รูปแบบเซฟ -> ลิสต์ช่อง อ่านได้ทั้ง array รูปแบบปัจจุบัน และ {name: count} แบบเก่า
 --- @param raw string|table ค่าจากคอลัมน์ users.inventory
 --- @return table ลิสต์ { {name=, amount=, slot=, info=}, ... }
 function Storage.DecodeInventory(raw)
@@ -92,7 +92,7 @@ function Storage.DecodeInventory(raw)
         return sortSlots(out), false
     end
 
-    -- รูปแบบ esx เก่า: {name = count} — ไม่มี slot/info ให้กู้ ได้แค่ชื่อกับจำนวน
+    -- รูปแบบเก่า: {name = count} — ไม่มี slot/info ให้กู้ ได้แค่ชื่อกับจำนวน
     for _, name in ipairs(sortedKeys(decoded)) do
         local count = tonumber(decoded[name]) or 0
         if count > 0 and not Shared.IsWeapon(name) then
@@ -127,7 +127,7 @@ function Storage.EncodeLoadout(items)
     return sortSlots(out)
 end
 
---- รูปแบบเซฟ loadout -> ลิสต์ช่อง อ่านได้ทั้ง array ปัจจุบัน, array ไอเทมรุ่นเก่า และ {name: {ammo...}} แบบ esx
+--- รูปแบบเซฟ loadout -> ลิสต์ช่อง อ่านได้ทั้ง array ปัจจุบัน, array ไอเทมรุ่นเก่า และ {name: {ammo...}} แบบเก่า
 --- @param raw string|table ค่าจากคอลัมน์ users.loadout
 --- @return table ลิสต์ { {name=, slot=, ammo=, components=, tintIndex=, serie=, quality=}, ... }
 function Storage.DecodeLoadout(raw)
@@ -156,7 +156,7 @@ function Storage.DecodeLoadout(raw)
         return sortSlots(out), false
     end
 
-    -- รูปแบบ esx เก่า: {name = {ammo=, components=, tintIndex=}} — ชื่อละกระบอก
+    -- รูปแบบเก่า: {name = {ammo=, components=, tintIndex=}} — ชื่อละกระบอก
     for _, name in ipairs(sortedKeys(decoded)) do
         local w = decoded[name]
         if type(w) == 'table' then

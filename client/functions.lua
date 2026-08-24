@@ -525,7 +525,7 @@ end
 
 -- Unused
 
--- ชุด SetTextFont/BeginTextCommandDisplayText/AddTextComponentSubstringPlayerName เป็นของ GTA V ไม่มีใน RDR3 เรียกแล้วตายที่บรรทัดแรก ต้องใช้สาย CreateVarString+DisplayText แบบ client/drawtext.lua
+-- ชุด SetTextFont/BeginTextCommandDisplayText/AddTextComponentSubstringPlayerName ไม่มีใน RDR3 เรียกแล้วตายที่บรรทัดแรก ต้องใช้สาย CreateVarString+DisplayText แบบ client/drawtext.lua
 function Core.DrawText(x, y, width, height, scale, r, g, b, a, text)
     -- Use local function instead
     SetTextScale(scale, scale)
