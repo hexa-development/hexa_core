@@ -79,11 +79,10 @@ dependencies {
     'oxmysql',
 }
 
--- stream/ ถูกเปลี่ยนชื่อเป็นคำนำหน้า hexa_ ทั้งหมด
--- ไฟล์พวกนี้เคยใช้ชื่อเดียวกับ asset ของเกม ซึ่งเป็นวิธีที่ RDR2 ใช้จับคู่ว่าจะเอาไฟล์ไหนไปทับของเดิม
--- พอเปลี่ยนชื่อแล้วมันจึงไม่ทับของเดิมอีก เกมกลับไปใช้ asset ต้นฉบับ ถ้าอยากให้ทับเหมือนเดิมให้เปลี่ยนชื่อกลับ:
---   hexa_minimap.gfx                       -> minimap.gfx
---   hexa_hud_reticle.gfx                   -> hud_reticle.gfx
---   hexa_generic_textures.ytd              -> generic_textures.ytd
---   hexa_ability_card_indicator.ytd        -> ability_card_indicator.ytd
+-- RDR2 จับคู่ว่าไฟล์ใน stream/ จะทับ asset ตัวไหนด้วยชื่อไฟล์ สองไฟล์นี้จึงใช้ชื่อเดียวกับของเกม คือตั้งใจให้ทับ:
+--   minimap.gfx      ทับแผนที่ย่อของเกม
+--   hud_reticle.gfx  ทับเป้าเล็งของเกม
+-- อีกสามไฟล์ยังมีคำนำหน้า hexa_ อยู่ จึงไม่ทับอะไร เกมใช้ asset ต้นฉบับ ถ้าอยากให้ทับให้เปลี่ยนชื่อกลับ:
+--   hexa_generic_textures.ytd               -> generic_textures.ytd
+--   hexa_ability_card_indicator.ytd         -> ability_card_indicator.ytd
 --   hexa_hud_quick_select_launcher_flow.ymt -> hud_quick_select_launcher_flow.ymt
