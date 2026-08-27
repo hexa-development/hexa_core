@@ -688,12 +688,21 @@ Documentation covers:
 
 ---
 
-## Related Projects
+## Hexa Ecosystem
 
-| Project                                                          | Description                                                              |
-| :--------------------------------------------------------------- | :----------------------------------------------------------------------- |
-| [`hexa-bridge`](https://github.com/hexa-development/hexa-bridge) | Compatibility layer for running supported RSG and VORP resources on Hexa |
-| [`hexa-docs`](https://github.com/hexa-development/hexa-docs)     | Official Hexa documentation and API reference                            |
+Every Hexa resource is a separate repository built on this one.
+
+| Project | Description |
+| :--- | :--- |
+| **`hexa_core`** | Core framework — players, jobs, items, economy, status, callbacks, permissions <br> *(this repository)* |
+| [`hexa_inventory`](https://github.com/hexa-development/hexa_inventory) | Persistent grid inventory — stashes, shops, ground drops, secure trading |
+| [`hexa_progbar`](https://github.com/hexa-development/hexa_progbar) | Screen-fixed progress bar — drop-in for `ox_lib` `progressBar` |
+| [`hexa-bridge`](https://github.com/hexa-development/hexa-bridge) | Compatibility layer for supported RSG and VORP resources |
+| [`hexa-docs`](https://github.com/hexa-development/hexa-docs) | Official documentation and API reference (VitePress) |
+| [`rdr2-unpack`](https://github.com/hexa-development/rdr2-unpack) | Read a local RDR2 install into open formats — GLB, PNG, `.ymap` JSON |
+| [`txAdmin`](https://github.com/hexa-development/txAdmin) | txAdmin deployment recipe for a Hexa server *(work in progress)* |
+
+Full API reference and installation guides live in [`hexa-docs`](https://github.com/hexa-development/hexa-docs) → [hexa-development.github.io/hexa-docs](https://hexa-development.github.io/hexa-docs/)
 
 ---
 
@@ -738,9 +747,12 @@ When updating a production server, review the documentation and upgrade guide fo
 <br>
 
 [Documentation](https://hexa-development.github.io/hexa-docs/) ·
-[ภาษาไทย](https://hexa-development.github.io/hexa-docs/th/) ·
-[Hexa Bridge](https://github.com/hexa-development/hexa-bridge) ·
-[GitHub](https://github.com/hexa-development)
+[เอกสารภาษาไทย](https://hexa-development.github.io/hexa-docs/th/) ·
+[hexa_core](https://github.com/hexa-development/hexa_core) ·
+[hexa_inventory](https://github.com/hexa-development/hexa_inventory) ·
+[hexa_progbar](https://github.com/hexa-development/hexa_progbar) ·
+[hexa-bridge](https://github.com/hexa-development/hexa-bridge) ·
+[Organization](https://github.com/hexa-development)
 
 <br>
 
